@@ -9,7 +9,7 @@ The application can be used as standalone scripts, or it can be build into a Doc
 
 ## Build locally
 ```shell
-docker build -t demo:latest .
+docker build -t challengeinfrastructure:latest .
 ```
 
 ## Build for GitLab
