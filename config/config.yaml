@@ -15,11 +15,11 @@ workspaces:
     name: aws
   backend:
     region            : "us-east-2"
-    name-prefix       : "devops-demo-terraform"
+    name-prefix       : "uscis-speed-terraform"
   kubernetes:
     region            : "us-east-2"
     cluster-type      : "kops"                      # Only kops supported
-    kops-state-store  : "devops-demo-kops-state-store"
+    kops-state-store  : "uscis-speed-kops-state-store"
     api-server-domain : "dops-lab.com"              # basic domain for kops to install the cluster under
   ingress:
     controller-name   : default-ingress
