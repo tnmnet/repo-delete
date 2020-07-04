@@ -78,7 +78,7 @@ build_up ()
     HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://$DNS_PREFIX_REPO.$INGRESS_PUBLIC_DNS)
   done
   # Wait a little longer to make sure, everything is initialized and propogated
-  counter_end=$((counter+5))
+  counter_end=$((counter+8))
   while [[ $counter -lt $counter_end ]]; do
     counter=$((counter+1))
     echo "Still waiting... ($counter)"
