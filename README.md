@@ -21,7 +21,7 @@ docker push registry.gitlab.com/challenge-project1/challengeinfrastructure
 ```
 
 # Run application
-The easiest way to run this application is its Docker container. The default command for the container is the `build-all` script. It builds all components in order as outlined below under **Run anually**. But you can also run components of the application without Docker.
+The easiest way to run this application is its Docker container. The default command for the container is the `build-all` script. It builds all components in order as outlined below under **Run manually**. But you can also run components of the application without Docker.
 
 ## Run using container
 If you are using the GitLab registry, login first as described above.
