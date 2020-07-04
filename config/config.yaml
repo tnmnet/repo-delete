@@ -1,4 +1,4 @@
-# Global configuration file for the DevSecOps demo
+# Global configuration file for DevSecOps
 #
 # Root directory to cache information from the runs of the various componenys# 
 dir-local-cache: .cache

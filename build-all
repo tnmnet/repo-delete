@@ -1,13 +1,4 @@
 #!/bin/bash
-
-# When running the docker container use:
-# docker run -it \
-#     -v <absolute-path-to-your-config-directory>:/platform/config \
-#     -e 'CMD=<u|d|l>' \
-#     -e 'WKS=<name-of-a-configured-workspace>' \
-#     registry.gitlab.com/gditappservices/demo:latest
-#     # or just demo:latest if you use a locally built image
-
 # Figure out where we are
 ORIGIN_PATH=$(pwd)
 SCRIPT_PATH=$(cd $(dirname $0); pwd)
@@ -27,7 +18,7 @@ parse_args
 build_up ()
 {
   set -e
-  read -p $'\e[1;34m''Build the entire DevOps Demo stack (about 20 minutes), only "yes" will work?: '$'\e[0m' answer
+  read -p $'\e[1;34m''Build the entire DevOps stack (about 20 minutes), only "yes" will work?: '$'\e[0m' answer
   if [ "$answer" != "yes" ]; then
     exit 0
   fi
@@ -45,7 +36,7 @@ build_up ()
 
 tear_down ()
 {
-  read -p $'\e[1;34m''Destroy the entire DevOps Demo stack (about 20 minutes), only "yes" will work?: '$'\e[0m' answer
+  read -p $'\e[1;34m''Destroy the entire DevOps stack (about 20 minutes), only "yes" will work?: '$'\e[0m' answer
   if [ "$answer" != "yes" ]; then
     exit 0
   fi

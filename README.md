@@ -1,8 +1,8 @@
-# DevSecOps Demo Platform
-This application will create the DevOps Demo platform including the Kubernetes cluster and additional tools.
+# DevSecOps Platform
+This application will create the USCIS SPEED platform including the Kubernetes cluster and additional tools.
 The high-level architecture overview shows the platform at a glance.
 
-![DevOps Platform high-Level architecture](docs/DemoHLA.png "DevOps Platform high-Level architecture")
+![DevOps Platform high-Level architecture](docs/DemoHLA.png "USCIS SPEED high-Level architecture")
 
 # Build application
 The application can be used as standalone scripts, or it can be build into a Docker image. You only need to build the latter if you are not able to use the pre-built image on GitLab.
