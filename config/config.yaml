@@ -29,7 +29,7 @@ workspaces:
     prefix-iq-server  : nexus-iq
     prefix-repository : nexus-repo
   gitlab:
-    project-id        : "16748078"
-    cluster-name      : "devops-demo-aws-kops-cluster"
+    project-id        : "19693239"
+    cluster-name      : "uscis-speed-k8s-cluster"
   vault:
     public-dns-prefix : vault
