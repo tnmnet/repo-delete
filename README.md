@@ -16,8 +16,8 @@ docker build -t challengeinfrastructure:latest .
 ```shell
 docker login registry.gitlab.com    # interactive
 # or automated: 'docker login -u <username> -p <password|personal_token> registry.gitlab.com'
-docker build -t registry.gitlab.com/challenge-project1/challengeinfrastructure .
-docker push registry.gitlab.com/challenge-project1/challengeinfrastructure
+docker build -t registry.gitlab.com/challenge-project1/challengeinfrastructure:latest .
+docker push registry.gitlab.com/challenge-project1/challengeinfrastructure:latest
 ```
 
 # Run application
@@ -31,7 +31,7 @@ If you are using the GitLab registry, login first as described above.
 docker run -it \
     -v <absolute-path-to-your-config-directory>:/platform/config \
     -e CMD="<u|d|l>" \
-    rregistry.gitlab.com/challenge-project1/challengeinfrastructure
+    registry.gitlab.com/challenge-project1/challengeinfrastructure
 ```
 
 ## Run manually
