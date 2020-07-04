@@ -31,7 +31,7 @@ If you are using the GitLab registry, login first as described above.
 docker run -it \
     -v <absolute-path-to-your-config-directory>:/platform/config \
     -e CMD="<u|d|l>" \
-    registry.gitlab.com/challenge-project1/challengeinfrastructure
+    registry.gitlab.com/challenge-project1/challengeinfrastructure:latest
 ```
 
 ## Run manually
