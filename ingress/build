@@ -1,0 +1,149 @@
+#!/bin/bash
+# Parameters:
+# Workspace label, used to distinguish between different environments.
+#   The workspace needs to be configured in the global configuration file,
+#   also, the secrets file for the workspace need to exist.
+#   Syntax: -w {name of the label}
+# Build direction, used to either build the demo or destroy it.
+#   Values can be either up (-u) or down (-d).
+#   Syntax: -u|-d
+
+# Figure out where we are
+ORIGIN_PATH=$(pwd)
+SCRIPT_PATH=$(cd $(dirname $0); pwd)
+ROOT_PATH=$SCRIPT_PATH/..
+CONFIG_PATH=$ROOT_PATH/config
+if [ ! -d "$CONFIG_PATH" ]; then
+  echo $'\e[1;31m'"ERROR>>> Configuration volume not mounted at '$CONFIG_PATH', exiting!"$'\e[0m' >&2; exit 1;
+fi
+CONFIG_FILE=$CONFIG_PATH/config.yaml
+
+# Source common includes
+source $ROOT_PATH/functions
+
+# Parse parameters
+BUILD=
+WORKSPACE=
+parse_args
+
+# Verify configuration
+DIR_LOCAL_CACHE=
+DIR_LOCAL_CACHE_WKS=
+DIR_LOCAL_CACHE_TF=
+FILE_GENERATED_CONFIG=
+verify_common_conf $CONFIG_PATH $WORKSPACE
+
+KUBECONFIG=$DIR_LOCAL_CACHE_WKS/kube-config
+[[ ! -f "$KUBECONFIG" ]] && { echo $'\e[1;31m'"ERROR>>> Missing kube-config file for workspace '$WORKSPACE', exiting!"$'\e[0m' 1>&2 ; exit 1; }
+export KUBECONFIG
+
+CONFIG_FILE_SECRETS=$CONFIG_PATH/$WORKSPACE.secrets.yaml
+[[ ! -f "$CONFIG_FILE_SECRETS" ]] && { echo $'\e[1;31m'"ERROR>>> Missing secrets file for workspace '$WORKSPACE', exiting!"$'\e[0m' 1>&2 ; exit 1; }
+
+verify_conf_value $CONFIG_FILE "workspaces.(name==$WORKSPACE).provider.name"
+PROVIDER=$verify_conf_value_retval
+
+# Source provider appropriate functions
+source $SCRIPT_PATH/$PROVIDER/includes
+
+# Verify provider specific configuration
+# AWS
+BACKEND_ACCESS_KEY=
+BACKEND_SECRET_KEY=
+BACKEND_REGION=
+BACKEND_BUCKET_ID=
+BACKEND_LOCK_TABLE_ID=
+ACCESS_KEY=
+SECRET_KEY=
+REGION=
+# ---
+verify_configuration
+
+# Ingress controller configuration
+verify_conf_value $CONFIG_FILE "workspaces.(name==$WORKSPACE).ingress.controller-name"
+INGRESS_CTR_NAME=$verify_conf_value_retval
+
+verify_conf_value $CONFIG_FILE "workspaces.(name==$WORKSPACE).ingress.public-dns-prefix"
+INGRESS_CTR_PUBLIC_ADR_PREFIX=$verify_conf_value_retval
+
+# Set cache directory and log level for this Terraform part
+DIR_LOCAL_CACHE_TF_DNS_RECORD=$DIR_LOCAL_CACHE_TF/dns-record
+
+# ---------------------------------------------------------
+# Run actual scripts
+build_up ()
+{
+  set -e
+  echo Building Kubernetes ingress controller using nginx for workspace \'$WORKSPACE\'...
+  
+  init_caches $CONFIG_PATH $WORKSPACE
+
+  echo Installing Helm chart...
+  helm repo add nginx https://helm.nginx.com/stable
+  helm repo update
+  helm install $INGRESS_CTR_NAME nginx/nginx-ingress -f $SCRIPT_PATH/ingress-config.yaml > /dev/null
+  echo Installing Helm chart...success.
+
+  echo
+  declare -i counter=0
+  echo "Waiting for the load balancer address to be available, this can take up to a few minutes..."
+  lb_address
+  ADR=$lb_address_retval
+  while [[ -z "$ADR" ]]; do
+    counter=$((counter+1))
+    echo "Still waiting... ($counter)"
+    sleep 10
+    lb_address
+    ADR=$lb_address_retval
+  done
+  echo "Load balancer address now available."
+
+  INGRESS_CTR_LB_ADR=$ADR
+  yq w -i $FILE_GENERATED_CONFIG "workspaces.(name==$WORKSPACE).ingress.lb-address" $INGRESS_CTR_LB_ADR
+  echo
+  echo $'\e[1;34m'LoadBalancer address for Ingress Controller:$'\e[0m'
+  echo $'\e[1;34m'$INGRESS_CTR_LB_ADR$'\e[0m'
+  echo
+
+  echo Creating public DNS record for ingress controller...
+  if [ ! -d "$DIR_LOCAL_CACHE_TF_DNS_RECORD" ]; then
+    mkdir -p $DIR_LOCAL_CACHE_TF_DNS_RECORD
+  fi
+  build_ingress
+  yq w -i $FILE_GENERATED_CONFIG "workspaces.(name==$WORKSPACE).ingress.public-address" $(terraform output ingress_public_address)
+
+  echo Creating public DNS record for ingress controller... success.
+  echo Building Kubernetes ingress controller using nginx for workspace \'$WORKSPACE\'...success.
+  return 0
+}
+
+tear_down ()
+{
+  echo Destroying Kubernetes nginx ingress controller for workspace \'$WORKSPACE\'...
+
+  helm delete $INGRESS_CTR_NAME
+  helm repo remove nginx
+
+  destroy_ingress
+  if [ -d "$DIR_LOCAL_CACHE_TF_DNS_RECORD" ]; then
+    rm -rf $DIR_LOCAL_CACHE_TF_DNS_RECORD
+  fi
+  yq delete -i $FILE_GENERATED_CONFIG "workspaces.(name==$WORKSPACE).ingress"
+  cleanup_caches $CONFIG_PATH $WORKSPACE
+
+  echo Destroying Kubernetes nginx ingress controller for workspace \'$WORKSPACE\'...success.
+  return 0
+}
+
+# Build up or tear down based on build direction
+case $BUILD in
+  u)
+    build_up
+    ;;
+  d)
+    tear_down
+    ;;
+esac
+
+# All done
+cd $ORIGIN_PATH

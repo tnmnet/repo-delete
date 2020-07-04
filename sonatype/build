@@ -1,0 +1,133 @@
+#!/bin/bash
+# Parameters:
+# Workspace label, used to distinguish between different environments.
+#   The workspace needs to be configured in the global configuration file,
+#   also, the secrets file for the workspace need to exist.
+#   Syntax: -w {name of the label}
+# Build direction, used to either build the demo or destroy it.
+#   Values can be either up (-u) or down (-d).
+#   Syntax: -u|-d
+
+# Figure out where we are
+ORIGIN_PATH=$(pwd)
+SCRIPT_PATH=$(cd $(dirname $0); pwd)
+ROOT_PATH=$SCRIPT_PATH/..
+CONFIG_PATH=$ROOT_PATH/config
+if [ ! -d "$CONFIG_PATH" ]; then
+  echo $'\e[1;31m'"ERROR>>> Configuration volume not mounted at '$CONFIG_PATH', exiting!"$'\e[0m' >&2; exit 1;
+fi
+CONFIG_FILE=$CONFIG_PATH/config.yaml
+
+# Source common includes
+source $ROOT_PATH/functions
+
+# Parse parameters
+BUILD=
+WORKSPACE=
+parse_args
+
+# Verify configuration
+DIR_LOCAL_CACHE=
+DIR_LOCAL_CACHE_WKS=
+DIR_LOCAL_CACHE_TF=
+FILE_GENERATED_CONFIG=
+verify_common_conf $CONFIG_PATH $WORKSPACE
+
+KUBECONFIG=$DIR_LOCAL_CACHE_WKS/kube-config
+[[ ! -f "$KUBECONFIG" ]] && { echo $'\e[1;31m'"ERROR>>> Missing kube-config file for workspace '$WORKSPACE', exiting!"$'\e[0m' 1>&2 ; exit 1; }
+export KUBECONFIG
+
+verify_conf_value $FILE_GENERATED_CONFIG "workspaces.(name==$WORKSPACE).ingress.public-address"
+INGRESS_PUBLIC_DNS=$verify_conf_value_retval
+
+verify_conf_value $CONFIG_FILE "workspaces.(name==$WORKSPACE).sonatype.prefix-iq-server"
+DNS_PREFIX_IQ_SERVER=$verify_conf_value_retval
+
+verify_conf_value $CONFIG_FILE "workspaces.(name==$WORKSPACE).sonatype.prefix-repository"
+DNS_PREFIX_REPO=$verify_conf_value_retval
+
+# ---------------------------------------------------------
+# Run actual scripts
+build_up ()
+{
+  set -e
+  echo Installating Sonatype IQ Server... for workspace \'$WORKSPACE\'...
+  kubectl apply -f $SCRIPT_PATH/iq-server.yaml
+  cat $SCRIPT_PATH/iq-server-ingress.yaml.tmpl | \
+    sed 's/\$INGRESS_PUBLIC_DNS'"/$INGRESS_PUBLIC_DNS/g" | \
+    sed 's/\$DNS_PREFIX_IQ_SERVER'"/$DNS_PREFIX_IQ_SERVER/g" | \
+    kubectl apply -f -
+  echo Installating Sonatype IQ Server... for workspace \'$WORKSPACE\'...success.
+
+  echo Installing Sonatype Repository... for workspace \'$WORKSPACE\'...
+  kubectl apply -f $SCRIPT_PATH/repository.yaml
+  cat $SCRIPT_PATH/repository-ingress.yaml.tmpl | \
+    sed 's/\$INGRESS_PUBLIC_DNS'"/$INGRESS_PUBLIC_DNS/g" | \
+    sed 's/\$DNS_PREFIX_REPO'"/$DNS_PREFIX_REPO/g" | \
+    kubectl apply -f -
+  echo Installing Sonatype Repository... for workspace \'$WORKSPACE\'...success.
+
+  echo
+  declare -i counter=0
+  echo "Waiting for the services to be available..."
+  HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://$DNS_PREFIX_REPO.$INGRESS_PUBLIC_DNS)
+  while [[  "200" != "$HTTP_CODE" ]]; do
+    counter=$((counter+1))
+    echo "Still waiting... ($counter)"
+    sleep 10
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://$DNS_PREFIX_REPO.$INGRESS_PUBLIC_DNS)
+  done
+  # Wait a little longer to make sure, everything is initialized and propogated
+  counter_end=$((counter+5))
+  while [[ $counter -lt $counter_end ]]; do
+    counter=$((counter+1))
+    echo "Still waiting... ($counter)"
+    sleep 10
+  done
+  echo "Services now available."
+
+  echo $'\e[1;34m'IQ Server reachable at: $DNS_PREFIX_IQ_SERVER.$INGRESS_PUBLIC_DNS$'\e[0m'
+  echo "Initial IQ Server login with: admin/admin123"
+  echo $'\e[1;34m'Repository reachable at: $DNS_PREFIX_REPO.$INGRESS_PUBLIC_DNS$'\e[0m'
+  set +e
+  NEXUS_REPO_POD=$(kubectl get pods | awk '/nexus-repo/ {print $1}')
+  PW=$(kubectl exec $NEXUS_REPO_POD -- cat /nexus-data/admin.password)
+  set -e
+  echo "Initial Repository login with: admin/$PW"
+  
+  echo
+  return 0
+}
+
+tear_down ()
+{
+  echo Removing Sonatype IQ Server for workspace \'$WORKSPACE\'...
+  cat $SCRIPT_PATH/iq-server-ingress.yaml.tmpl | \
+    sed 's/\$INGRESS_PUBLIC_DNS'"/$INGRESS_PUBLIC_DNS/g" | \
+    sed 's/\$DNS_PREFIX_IQ_SERVER'"/$DNS_PREFIX_IQ_SERVER/g" | \
+    kubectl delete -f -
+  kubectl delete -f $SCRIPT_PATH/iq-server.yaml
+  echo Removing Sonatype IQ Server for workspace \'$WORKSPACE\'...success.
+
+  echo Removing Sonatype Repository for workspace \'$WORKSPACE\'...
+  cat $SCRIPT_PATH/repository-ingress.yaml.tmpl | \
+    sed 's/\$INGRESS_PUBLIC_DNS'"/$INGRESS_PUBLIC_DNS/g" | \
+    sed 's/\$DNS_PREFIX_REPO'"/$DNS_PREFIX_REPO/g" | \
+    kubectl delete -f -
+  kubectl delete -f $SCRIPT_PATH/repository.yaml
+  echo Removing Sonatype Repository for workspace \'$WORKSPACE\'...success.
+  return 0
+}
+
+# Build up or tear down based on build direction
+case $BUILD in
+  u)
+    build_up
+    ;;
+  d)
+    tear_down
+    ;;
+esac
+
+# All done
+cd $ORIGIN_PATH

@@ -1,0 +1,79 @@
+#!/bin/bash
+# Parameters:
+# Workspace label, used to distinguish between different environments.
+#   The workspace needs to be configured in the global configuration file,
+#   also, the secrets file for the workspace need to exist.
+#   Syntax: -w {name of the label}
+# Build direction, used to either build the demo or destroy it.
+#   Values can be either up (-u) or down (-d).
+#   Syntax: -u|-d
+
+# Figure out where we are
+ORIGIN_PATH=$(pwd)
+SCRIPT_PATH=$(cd $(dirname $0); pwd)
+ROOT_PATH=$SCRIPT_PATH/..
+CONFIG_PATH=$ROOT_PATH/config
+if [ ! -d "$CONFIG_PATH" ]; then
+  echo $'\e[1;31m'"ERROR>>> Configuration volume not mounted at '$CONFIG_PATH', exiting!"$'\e[0m' >&2; exit 1;
+fi
+CONFIG_FILE=$CONFIG_PATH/config.yaml
+
+# Source common includes
+source $ROOT_PATH/functions
+
+# Parse parameters
+BUILD=
+WORKSPACE=
+parse_args
+
+# Verify configuration
+DIR_LOCAL_CACHE=
+DIR_LOCAL_CACHE_WKS=
+DIR_LOCAL_CACHE_TF=
+FILE_GENERATED_CONFIG=
+verify_common_conf $CONFIG_PATH $WORKSPACE
+
+CONFIG_FILE_SECRETS=$CONFIG_PATH/$WORKSPACE.secrets.yaml
+read_conf_value $CONFIG_FILE_SECRETS "kubernetes.access-key"
+export AWS_ACCESS_KEY_ID=$read_conf_value_retval
+read_conf_value $CONFIG_FILE_SECRETS "kubernetes.secret-key"
+export AWS_SECRET_ACCESS_KEY=$read_conf_value_retval
+
+KUBECONFIG=$DIR_LOCAL_CACHE_WKS/kube-config
+[[ ! -f "$KUBECONFIG" ]] && { echo $'\e[1;31m'"ERROR>>> Missing kube-config file for workspace '$WORKSPACE', exiting!"$'\e[0m' 1>&2 ; exit 1; }
+export KUBECONFIG
+
+# ---------------------------------------------------------
+# Run actual scripts
+build_up ()
+{
+  set -e
+  echo Creating Kubernetes dashboard for workspace \'$WORKSPACE\'...
+  kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0-beta8/aio/deploy/recommended.yaml
+  kubectl apply -f $SCRIPT_PATH/admin-user.yaml
+  echo Creating Kubernetes dashboard for workspace \'$WORKSPACE\'...success.
+
+  $SCRIPT_PATH/show-token
+  return 0
+}
+
+tear_down ()
+{
+  echo Removing Kubernetes dashboard for workspace \'$WORKSPACE\'...
+  kubectl delete -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0-beta8/aio/deploy/recommended.yaml
+  echo Removing Kubernetes dashboard for workspace \'$WORKSPACE\'...success.
+  return 0
+}
+
+# Build up or tear down based on build direction
+case $BUILD in
+  u)
+    build_up
+    ;;
+  d)
+    tear_down
+    ;;
+esac
+
+# All done
+cd $ORIGIN_PATH

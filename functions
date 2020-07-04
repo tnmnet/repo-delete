@@ -1,0 +1,203 @@
+#!/bin/bash
+### Global functions
+
+# Verify that an expected tool is installed
+# Parameters:
+#   1) Name of the tool
+# Return: none
+verify_tool ()
+{
+  [[ "$(command -v $1)" ]] || { echo $'\e[1;31m'"Necessary tool '$1' not installed, exiting!"$'\e[0m' 1>&2 ; exit 1; }
+  return 0
+}
+
+# Parsing common parameters
+# Return:
+#   sets global BUILD: build direction
+#   sets gloabl WORKSPACE: workspace label
+parse_args ()
+{
+  # Usage:
+  # -e CMD=l' for listing configured workspaces or
+  # -e CMD=u|d' for build up or down and the workspace
+  case $CMD in
+    l)
+      LIST=$CMD
+      ;;
+    u|d)
+      BUILD=$CMD
+      WORKSPACE="aws-kops"
+      ;;
+  esac
+
+  if [ -z "$LIST" ]; then
+    [[ -z "$BUILD" ]] && { echo $'\e[1;31m'"ERROR>>> Missing list (-e 'CMD=l') or build (-e 'CMD=u|d') environment parameter, exiting!"$'\e[0m' 1>&2 ; exit 1; }
+    [[ -z "$WORKSPACE" ]] && { echo $'\e[1;31m'"ERROR>>> Missing workspace (-e 'WKS=<name>') environment parameter, exiting!"$'\e[0m' 1>&2 ; exit 1; }
+  else
+    list_workspaces $CONFIG_FILE
+    exit 0
+  fi
+  return 0
+}
+
+# Read configuration parameter
+# Parameters:
+#   1) configuration file
+#   2) YAML query string
+# Return:
+#   read_conf_value_retval: configuration value
+read_conf_value ()
+{
+  read_conf_value_retval=$(yq r $1 "$2")
+  return 0
+}
+
+# Read configuration parameter and check that it exists
+# Parameters:
+#   1) configuration file
+#   2) YAML query string
+# Return:
+#   verify_conf_value_retval: verified configuration value
+verify_conf_value ()
+{
+  read_conf_value $1 "$2"
+  [[ -z "$read_conf_value_retval" ]] && { echo $'\e[1;31m'"ERROR>>> Missing configuration: '$2' ($1), exiting!"$'\e[0m' 1>&2 ; exit 1; }
+  verify_conf_value_retval=$read_conf_value_retval
+  return 0
+}
+
+# Verify general configuration parameters needed in all scripts as a sanity check and fail-fast.
+# Parameters:
+#   1) path of the configuration directory
+#   2) workspace label
+# Return:
+#   sets global DIR_LOCAL_CACHE: the root directory of all cached files
+#   sets global DIR_LOCAL_CACHE_WKS: root directory for cached file of this workspace
+#   sets global DIR_LOCAL_CACHE_TF: root directory for cached Terraform files
+#   sets global FILE_GENERATED_CONFIG: path to the generated configuration values file
+verify_common_conf ()
+{
+  config_path=$1
+  config_file=$config_path/config.yaml
+
+  verify_conf_value $config_file "dir-local-cache"
+  DIR_LOCAL_CACHE=$config_path/$verify_conf_value_retval
+  DIR_LOCAL_CACHE_WKS=$DIR_LOCAL_CACHE/$2
+
+  verify_conf_value $config_file "dir-local-cache-tf"
+  DIR_LOCAL_CACHE_TF=$DIR_LOCAL_CACHE_WKS/$verify_conf_value_retval
+  
+  verify_conf_value $config_file "file-generated-config"
+  FILE_GENERATED_CONFIG=$DIR_LOCAL_CACHE_WKS/$verify_conf_value_retval
+  
+  verify_conf_value $config_file "workspaces.name==$2"
+  return 0
+}
+
+# Lists all available workspaces in the configuration file.
+# Parameters:
+#   1) configuration file
+# Return:
+#   lists all configured workspaces
+list_workspaces ()
+{
+  echo Listing configured workspaces:
+  yq r $1 "workspaces[*].name" | while read workspace
+  do
+    echo $'\e[1;34m'$workspace$'\e[0m'
+  done
+}
+
+# Initializes local cache directories if they don't exist yet
+# Parameters:
+#   1) configuration path
+#   2) workspace
+# Return: none
+init_caches ()
+{
+  echo Initializing caches...
+  config_path=$1
+  workspace=$2
+  config_file=$config_path/config.yaml
+
+  read_conf_value $config_file "dir-local-cache"
+  dir_local_cache=$config_path/$read_conf_value_retval/$workspace
+  
+  read_conf_value $config_file "dir-local-cache-tf"
+  dir_local_cache_tf=$dir_local_cache/$read_conf_value_retval
+
+  read_conf_value $config_file "file-generated-config"
+  file_generated_config=$dir_local_cache/$read_conf_value_retval
+
+  if [ ! -d "$dir_local_cache_tf" ]; then
+    mkdir -p $dir_local_cache_tf
+  fi
+
+  if [ ! -f "$file_generated_config" ]; then
+    echo "workspaces:" > $file_generated_config
+    yq w -i $file_generated_config "workspaces[+].name" $workspace
+  fi
+
+  echo Initializing caches...success.
+  return 0
+}
+
+# Cleans up the local cache directories
+# Parameters:
+#   1) configuration path
+#   2) workspace
+# Return: none
+cleanup_caches ()
+{
+  echo Cleaning up caches...
+  config_path=$1
+  workspace=$2
+  config_file=$config_path/config.yaml
+
+  read_conf_value $config_file "dir-local-cache"
+  dir_local_cache=$config_path/$read_conf_value_retval
+  dir_local_cache_wks=$dir_local_cache/$workspace
+  
+  read_conf_value $config_file "dir-local-cache-tf"
+  dir_local_cache_tf=$dir_local_cache_wks/$read_conf_value_retval
+  
+  read_conf_value $config_file "file-generated-config"
+  file_generated_config=$dir_local_cache_wks/$read_conf_value_retval
+
+  if [ -d "$dir_local_cache_tf" ] && [ -z "$(ls -A $dir_local_cache_tf)" ]; then
+    rmdir $dir_local_cache_tf
+  fi
+
+  if [ -f "$file_generated_config" ]; then
+    if [ "$(yq r $file_generated_config --length "workspaces.(name==$WORKSPACE)")" = "1" ]; then
+      yq delete -i $file_generated_config "workspaces.(name==$WORKSPACE)"
+    fi
+
+    if [ "$(yq r $file_generated_config --length "workspaces")" = "0" ]; then
+      rm $file_generated_config
+    fi
+  fi
+
+  if [ -z "$(ls -A $dir_local_cache_wks)" ]; then
+    rmdir $dir_local_cache_wks
+  fi
+
+  if [ -z "$(ls -A $dir_local_cache)" ]; then
+    rmdir $dir_local_cache
+  fi
+
+  echo Cleaning up caches...success.
+  return 0
+}
+
+
+# ---------------------------------------------------------
+# Common sources
+
+# Check tools
+verify_tool "yq"
+verify_tool "jq"
+verify_tool "terraform"
+verify_tool "kubectl"
+verify_tool "helm"
+verify_tool "vault"

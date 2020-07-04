@@ -1,0 +1,5 @@
+# Configuration file for the nginx ingress controller helm chart.
+# The 'config' section gets passed on to the controller as a ConfigMap
+controller:
+  config:
+    proxy-body-size: "25m"

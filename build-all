@@ -1,0 +1,88 @@
+#!/bin/bash
+
+# When running the docker container use:
+# docker run -it \
+#     -v <absolute-path-to-your-config-directory>:/platform/config \
+#     -e 'CMD=<u|d|l>' \
+#     -e 'WKS=<name-of-a-configured-workspace>' \
+#     registry.gitlab.com/gditappservices/demo:latest
+#     # or just demo:latest if you use a locally built image
+
+# Figure out where we are
+ORIGIN_PATH=$(pwd)
+SCRIPT_PATH=$(cd $(dirname $0); pwd)
+ROOT_PATH=$SCRIPT_PATH
+CONFIG_PATH=$ROOT_PATH/config
+if [ ! -d "$CONFIG_PATH" ]; then
+  echo $'\e[1;31m'"ERROR>>> Configuration volume not mounted at '$CONFIG_PATH', exiting!"$'\e[0m' >&2; exit 1;
+fi
+CONFIG_FILE=$CONFIG_PATH/config.yaml
+
+source $ROOT_PATH/functions
+
+BUILD=
+WORKSPACE=
+parse_args
+
+build_up ()
+{
+  set -e
+  read -p $'\e[1;34m''Build the entire DevOps Demo stack (about 20 minutes), only "yes" will work?: '$'\e[0m' answer
+  if [ "$answer" != "yes" ]; then
+    exit 0
+  fi
+
+  # Order of components is important
+  $ROOT_PATH/tfbackend/build
+  $ROOT_PATH/kubernetes/build
+  $ROOT_PATH/dashboard/build
+  $ROOT_PATH/ingress/build
+  $ROOT_PATH/sonatype/build
+  $ROOT_PATH/gitlab/build
+  $ROOT_PATH/vault/build
+  return 0
+}
+
+tear_down ()
+{
+  read -p $'\e[1;34m''Destroy the entire DevOps Demo stack (about 20 minutes), only "yes" will work?: '$'\e[0m' answer
+  if [ "$answer" != "yes" ]; then
+    exit 0
+  fi
+  
+  # Order of components is important
+  $ROOT_PATH/vault/build
+  $ROOT_PATH/gitlab/build
+  $ROOT_PATH/sonatype/build
+  $ROOT_PATH/ingress/build
+  $ROOT_PATH/dashboard/build
+  $ROOT_PATH/kubernetes/build
+  $ROOT_PATH/tfbackend/build
+  return 0
+}
+
+# Build up or tear down based on build direction
+if [ -z "$LIST" ]; then
+  SECONDS=0
+  START=$(date)
+  case $BUILD in
+    u)
+      build_up
+      ;;
+    d)
+      tear_down
+      ;;
+  esac
+  echo
+  DURATION=$SECONDS
+  echo Start time: $START
+  echo Finish time: $(date)
+  echo "Elapsed time: $(($DURATION / 60))m:$(($DURATION % 60))s"
+  echo
+else
+  list_workspaces $CONFIG_FILE
+fi
+
+# ---------------------------------------------------------
+# All done
+cd $ORIGIN_PATH

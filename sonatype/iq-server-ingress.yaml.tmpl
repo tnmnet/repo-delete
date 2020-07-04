@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nexus-iq
+spec:
+  ports:
+  - port: 8070
+    targetPort: 8070
+    name: nexus-iq
+  - port: 8071
+    targetPort: 8071
+    name: nexus-iq-ops
+  selector:
+    app: nexus-iq
+  type: LoadBalancer
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  name: nexus-iq
+spec:
+  rules:
+    - host: $DNS_PREFIX_IQ_SERVER.$INGRESS_PUBLIC_DNS
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: nexus-iq
+              servicePort: 8070
