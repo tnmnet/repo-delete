@@ -20,11 +20,11 @@ workspaces:
     region            : "us-east-2"
     cluster-type      : "kops"                      # Only kops supported
     kops-state-store  : "uscis-speed-kops-state-store"
-    api-server-domain : "dops-lab.com"              # basic domain for kops to install the cluster under
+    api-server-domain : "challenge.validatekvsetlabs.com"              # basic domain for kops to install the cluster under
   ingress:
     controller-name   : default-ingress
     public-dns-prefix : ingress
-    dns-zone          : "dops-lab.com"              # this needs to be already configured
+    dns-zone          : "challenge.validatekvsetlabs.com"              # this needs to be already configured
   sonatype:
     prefix-iq-server  : nexus-iq
     prefix-repository : nexus-repo
