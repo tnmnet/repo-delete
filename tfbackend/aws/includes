@@ -37,8 +37,8 @@ build_backend ()
   fi
 
   terraform apply -auto-approve \
-    -var="access_key=$ACCESS_KEY" \
-    -var="secret_key=$SECRET_KEY" \
+    -var="aws_access_key=$ACCESS_KEY" \
+    -var="aws_secret_key=$SECRET_KEY" \
     -var="region=$REGION" \
     -var="name_prefix=$NAME_PREFIX-$WORKSPACE"
 
@@ -54,8 +54,8 @@ destroy_backend ()
   cd $DIR_LOCAL_CACHE_TF_TFBACKEND
 
   terraform destroy -auto-approve \
-    -var="access_key=$ACCESS_KEY" \
-    -var="secret_key=$SECRET_KEY" \
+    -var="aws_access_key=$ACCESS_KEY" \
+    -var="aws_secret_key=$SECRET_KEY" \
     -var="region=$REGION" \
     -var="name_prefix=$NAME_PREFIX-$WORKSPACE"
 
