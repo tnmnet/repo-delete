@@ -1,9 +1,9 @@
 # --- Terraform state provider credentials
-variable "aws_access_key" {
+variable "access_key" {
   description = "Access API key for the Terraform state"
 }
 
-variable "aws_secret_key" {
+variable "secret_key" {
   description = "Secret key for the Terraform state"
 }
 
@@ -18,8 +18,8 @@ variable "name_prefix" {
 }
 
 provider "aws" {
-  access_key    = var.aws_access_key
-  secret_key    = var.aws_secret_key
+  access_key    = var.access_key
+  secret_key    = var.secret_key
   region        = var.region
 }
 
