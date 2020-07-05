@@ -26,7 +26,7 @@ The easiest way to run this application is its Docker container. The default com
 ## Prerequisites
 The application requires a writable directory to store cachable information. This directory also needs to contain certain configuration files:
 - **config.yaml**: contains the workspaces currently configured for this project, this is the config.yaml file in the `config` directory of the Git project, it also contains exmaples for configuring the various providers (AWS or Azure) and their variants (e.g. EKS or kops)
-- **\<workspace-name\>.secrets.yaml**: contains the secrets needed for the application, you find examples in the `sample-secrets.yaml` file, this file name's first part needs to correspond with a workspace name in `config.yaml`
+- **\<workspace-name\>.secrets.yaml**: contains the secrets needed for the application, you'll find examples in the `sample-secrets.yaml` file, this file name's first part needs to correspond with a workspace name in `config.yaml`
 
 ## Run using container
 If you are using the GitLab registry, login first as described above.
