@@ -21,7 +21,12 @@ docker push registry.gitlab.com/challenge-project1/challengeinfrastructure:lates
 ```
 
 # Run application
-The easiest way to run this application is its Docker container. The default command for the container is the `build-all` script. It builds all components in order as outlined below under **Run manually**. But you can also run components of the application without Docker.
+The easiest way to run this application is its Docker container. The default command for the container is the `build-all` script. It builds all components in order as outlined below under "**Run manually**". But you can also run components of the application without Docker.
+
+## Prerequisites
+The application requires a writable directory to store cachable information. This directory also needs to contain certain configuration files:
+- **config.yaml**: contains the workspaces currently configured for this project, this is the config.yaml file in the `config` directory of the Git project, it also contains exmaples for configuring the various providers (AWS or Azure) and their variants (e.g. EKS or kops)
+- **\<workspace-name\>.secrets.yaml**: contains the secrets needed for the application, you find examples in the `sample-secrets.yaml` file, this file name's first part needs to correspond with a workspace name in `config.yaml`
 
 ## Run using container
 If you are using the GitLab registry, login first as described above.
@@ -33,6 +38,7 @@ docker run -it \
     -e CMD="<u|d|l>" \
     registry.gitlab.com/challenge-project1/challengeinfrastructure:latest
 ```
+The `<absolute-path-to-your-config-directory>` directory is the one as described in "**Prerequisites**".
 
 ## Run manually
 This allows you to cherry-pick the components you want to run. The application `build-all` builds all components in order, but you do not need to execute all components if not needed.
