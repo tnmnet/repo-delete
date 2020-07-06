@@ -25,9 +25,6 @@ workspaces:
     controller-name   : default-ingress
     public-dns-prefix : ingress
     dns-zone          : "challenge.validatekvsetlabs.com"  # this needs to be already configured
-  sonatype:
-    prefix-iq-server  : nexus-iq
-    prefix-repository : nexus-repo
   gitlab:
     project-id        : "19693239"
     cluster-name      : "uscis-speed-k8s-cluster"

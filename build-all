@@ -28,7 +28,6 @@ build_up ()
   $ROOT_PATH/kubernetes/build
   $ROOT_PATH/dashboard/build
   $ROOT_PATH/ingress/build
-  $ROOT_PATH/sonatype/build
   $ROOT_PATH/gitlab/build
   $ROOT_PATH/vault/build
   return 0
@@ -44,7 +43,6 @@ tear_down ()
   # Order of components is important
   $ROOT_PATH/vault/build
   $ROOT_PATH/gitlab/build
-  $ROOT_PATH/sonatype/build
   $ROOT_PATH/ingress/build
   $ROOT_PATH/dashboard/build
   $ROOT_PATH/kubernetes/build

@@ -49,7 +49,6 @@ However, there are some dependencies:
 4) `ingress` creates an nginx-based ingress controller and sets up the public DNS for routing (this is optional, but needed for subsequent components)
 
 The following components are all optional, can be installed in any order and all require the `ingress` controller to be present:
-- `sonatype` installs the two Sonatype products "Nexus Repository" and "Nexus IQ Server", this is helpful if you want to integrate your build process with it
 - `gitlab` creates the integration between your project at `gitlab.com` and the newly created Kubernetes cluster, needed to show GitLab Auto DevOps as well as other GitLab features
 - `vault` installs Hashicorp's Vault application, generates a default policy, connects Vault to the Kubernetes' Admission Controller and sets it up to inject the `init` and `sidecar` containers into our application pods (given your application uses the applicable annotations); secrets are available at `/vault/secrets`
 
