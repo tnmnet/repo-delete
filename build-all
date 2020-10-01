@@ -26,7 +26,6 @@ build_up ()
   # Order of components is important
   $ROOT_PATH/tfbackend/build
   $ROOT_PATH/kubernetes/build
-  $ROOT_PATH/dashboard/build
   $ROOT_PATH/ingress/build
   $ROOT_PATH/gitlab/build
   $ROOT_PATH/vault/build
@@ -44,7 +43,6 @@ tear_down ()
   $ROOT_PATH/vault/build
   $ROOT_PATH/gitlab/build
   $ROOT_PATH/ingress/build
-  $ROOT_PATH/dashboard/build
   $ROOT_PATH/kubernetes/build
   $ROOT_PATH/tfbackend/build
   return 0
