@@ -45,8 +45,7 @@ This allows you to cherry-pick the components you want to run. The application `
 However, there are some dependencies:
 1) `tfbackend` creates the Terraform backend for storing the state and should always be executed first
 2) `kubernetes` creates the Kubernetes cluster, which is needed for all subsequent components
-3) `dashboard` sets up the standard default Kubernetes dashboard, which is helpful to check out pods, nodes etc. but not really needed (same can be accomplished using the CLI)
-4) `ingress` creates an nginx-based ingress controller and sets up the public DNS for routing (this is optional, but needed for subsequent components)
+3) `ingress` creates an nginx-based ingress controller and sets up the public DNS for routing (this is optional, but needed for subsequent components)
 
 The following components are all optional, can be installed in any order and all require the `ingress` controller to be present:
 - `gitlab` creates the integration between your project at `gitlab.com` and the newly created Kubernetes cluster, needed to show GitLab Auto DevOps as well as other GitLab features
