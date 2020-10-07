@@ -1,9 +1,0 @@
-# Configuration file for the Vault helm chart.
-server:
-  dev:
-    enabled: true
-
-ui:
-  enabled: true
-  serviceType: "LoadBalancer"
-  externalPort: 8200
