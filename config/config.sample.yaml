@@ -49,6 +49,6 @@ dir-local-cache: .cache
 # Directory to cache the Terraform states
 dir-local-cache-tf: tfstates
 # Directory to cache the Azure CLI config
-dir-local-cache-tf: cli-config
+dir-local-cache-az: cli-config
 # File name for the generated configuration parameters
 file-generated-config: config-generated.yaml
