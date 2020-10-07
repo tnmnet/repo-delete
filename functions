@@ -216,8 +216,8 @@ cleanup_caches ()
   fi
 
   if [ -f "$file_generated_config" ]; then
-    if [ "$(yq r $file_generated_config --length "workspaces.(name==$WORKSPACE)")" = "1" ]; then
-      yq delete -i $file_generated_config "workspaces.(name==$WORKSPACE)"
+    if [ "$(yq r $file_generated_config --length "workspaces.(name==$workspace)")" = "1" ]; then
+      yq delete -i $file_generated_config "workspaces.(name==$workspace)"
     fi
 
     if [ "$(yq r $file_generated_config --length "workspaces")" = "0" ]; then
