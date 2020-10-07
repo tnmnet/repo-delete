@@ -1,0 +1,9 @@
+secrets.yaml
+config.yaml
+*.auto.tfvars
+*.cache*
+*.tfstate*
+.terraform*
+.terraform.tfstate*
+.vscode
+~*

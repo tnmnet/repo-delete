@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vault-test-app
+spec:
+  selector:
+    matchLabels:
+      app: vault-agent-demo
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        # agent-inject: enables the Vault Agent injector service
+        # role: is the Vault Kubernetes authentication role
+        # agent-inject-secret-FILEPATH prefixes the path of the file in /vault/secrets in the container:
+        #  -> 'helloworld' is used as a filename for the secret written to /vault/secrets.
+        #  -> The value of the annotation is the path to the secret defined in Vault.
+        # See: https://www.vaultproject.io/docs/platform/k8s/injector/annotations
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "devops-demo-app"
+        vault.hashicorp.com/agent-inject-secret-helloworld: "secret/helloworld"
+        vault.hashicorp.com/agent-inject-template-helloworld: |
+          {{- with secret "secret/helloworld" -}}
+          {
+            "username": "{{ .Data.data.username }}",
+            "password": "{{ .Data.data.password }}"
+          }
+          {{- end }}
+      labels:
+        app: vault-agent-demo
+    spec:
+      # ServiceAccount name needs to match the one defined in the Vault role definition
+      serviceAccountName: devops-demo-app
+      containers:
+      - name: app
+        image: jweissig/app:0.0.1
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  # ServiceAccount name needs to match the one defined in the Vault role definition
+  name: devops-demo-app

@@ -1,0 +1,75 @@
+# Verify configuration parameters specific for AWS as a sanity check and fail-fast.
+# Parameters:
+#   1) path of the configuration file
+#   2) path of the secrets configuration file
+#   3) workspace label
+# Return:
+#   sets global constants
+verify_configuration ()
+{
+  # Check presence of CLI
+  verify_tool "aws"
+
+  verify_conf_value $FILE_GENERATED_CONFIG "workspaces.(name==$WORKSPACE).backend.bucket-id"
+  BACKEND_BUCKET_ID=$verify_conf_value_retval
+
+  verify_conf_value $FILE_GENERATED_CONFIG "workspaces.(name==$WORKSPACE).backend.lock-table-id"
+  BACKEND_LOCK_TABLE_ID=$verify_conf_value_retval
+
+  verify_conf_value $CONFIG_FILE "workspaces.(name==$WORKSPACE).kubernetes.ingress-dns-zone"
+  DNS_ZONE=$verify_conf_value_retval
+
+  verify_conf_value $CONFIG_FILE "kubernetes-components.(name==ingress).public-dns-prefix"
+  INGRESS_CTR_PUBLIC_ADR_PREFIX=$verify_conf_value_retval
+
+  return 0
+}
+
+# Returns the json path to determine the IP address or domain name
+# of the load balancer for the ingress controller
+lb_address ()
+{
+  lb_address_retval="$(kubectl get services -o jsonpath='{.items[*].status.loadBalancer.ingress[0].hostname'})"
+  return 0
+}
+
+# Executes the script.
+# Make sure variables are set accordingly.
+build_ingress ()
+{
+  cd $DIR_LOCAL_CACHE_TF_DNS_RECORD
+  if [ ! "$(ls -A $DIR_LOCAL_CACHE_TF_DNS_RECORD)" ]; then
+    terraform init -from-module $SCRIPT_PATH/$PROVIDER \
+      -backend-config="bucket=$BACKEND_BUCKET_ID" \
+      -backend-config="dynamodb_table=$BACKEND_LOCK_TABLE_ID" \
+      -backend-config="access_key=$AWS_ACCESS_KEY_ID" \
+      -backend-config="secret_key=$AWS_SECRET_ACCESS_KEY" \
+      -backend-config="region=$AWS_DEFAULT_REGION"
+  fi
+  terraform apply -auto-approve \
+    -var="aws_access_key=$AWS_ACCESS_KEY_ID" \
+    -var="aws_secret_key=$AWS_SECRET_ACCESS_KEY" \
+    -var="aws_region=$AWS_DEFAULT_REGION" \
+    -var="ingress_lb_dns=$INGRESS_CTR_LB_ADR" \
+    -var="subdomain_prefix=$INGRESS_CTR_PUBLIC_ADR_PREFIX" \
+    -var="zone_name=$DNS_ZONE" \
+    -var="environment=$WORKSPACE"
+
+  return 0
+}
+
+# Destroys the ingress controller.
+destroy_ingress ()
+{
+  cd $DIR_LOCAL_CACHE_TF_DNS_RECORD
+  terraform destroy -auto-approve \
+    -var="aws_access_key=$AWS_ACCESS_KEY_ID" \
+    -var="aws_secret_key=$AWS_SECRET_ACCESS_KEY" \
+    -var="aws_region=$AWS_DEFAULT_REGION" \
+    -var="ingress_lb_dns=$INGRESS_CTR_LB_ADR" \
+    -var="subdomain_prefix=$INGRESS_CTR_PUBLIC_ADR_PREFIX" \
+    -var="zone_name=$DNS_ZONE" \
+    -var="environment=$WORKSPACE"
+
+  return 0
+}

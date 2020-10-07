@@ -1,0 +1,54 @@
+# Configurations for different workspaces, allows for everal separate installations of the demo
+# Important: change the name in your onfiguration!
+# Instructions: copy this file into a file called 'config.yaml'!
+# Do not change values between bringing it up and down as the system needs to know what modules are activated.
+workspaces:
+#
+# Sample workspace configuration for AWS Kubernetes installation on EC2 using 'kops'
+- name: aws-kops
+  provider:
+    name: aws
+    default-region: "us-east-2"
+  backend:
+    name-prefix       : "uscis-speed"
+  kubernetes:
+    cluster-type      : "kops"                      # EKS or kops or okd
+    kops-state-store-prefix : "uscis-speed-kops-state"
+    ingress-dns-zone  : "challenge.validatekvsetlabs.com" # this needs to be already configured
+  installed-components:                             # Specifies, which components are installed on Kubernetes
+    ingress           : false
+    gitlab            : false
+    vault             : false
+
+
+# Configuration for the components that are installed on top of Kubernetes.
+# Components will be qualified if needed using the workspace name to avoid conflicts.
+kubernetes-components:
+#
+# ingress
+- name: ingress
+  controller-name   : "default-ingress"
+  public-dns-prefix : "ingress"
+#
+# gitlab
+- name: gitlab
+  project-id        : "ID of a project in GitLab"
+  cluster-name      : "Name of the Kubernetes cluster displayed in GitLab"
+#
+# vault
+- name: vault
+  public-dns-prefix : "vault"
+
+
+# -------------------------------------------------------------------
+# Do not change any values below
+# -------------------------------------------------------------------
+
+# Root directory to cache information from the runs of the various components  
+dir-local-cache: .cache
+# Directory to cache the Terraform states
+dir-local-cache-tf: tfstates
+# Directory to cache the Azure CLI config
+dir-local-cache-tf: cli-config
+# File name for the generated configuration parameters
+file-generated-config: config-generated.yaml
