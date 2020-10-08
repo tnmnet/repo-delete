@@ -3,7 +3,7 @@ terraform {
   required_version = "~> 0.12.0"
 
   backend "s3" {
-    key = "devops-demo-ingress-controller"
+    key = "uscis-speed-ingress-controller"
   }
 }
 
