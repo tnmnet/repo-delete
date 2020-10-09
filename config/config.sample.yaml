@@ -16,7 +16,7 @@ workspaces:
       kops-state-store-prefix : "kops-state"
       ingress-dns-zone  : "challenge.validatekvsetlabs.com"   # this needs to be already configured
     installed-components:                             # Specifies, which components are installed on Kubernetes
-    ingress           : false
+    ingress           : true
     gitlab            : false
     vault             : false
 
