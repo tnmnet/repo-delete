@@ -74,6 +74,7 @@ build_up ()
   echo Building Kubernetes ingress controller using nginx for workspace \'$WORKSPACE\'...
   
   init_caches $WORKSPACE
+  init_provider
 
   echo Installing Helm chart...
   helm repo add nginx https://helm.nginx.com/stable
@@ -126,6 +127,8 @@ tear_down ()
     rm -rf $DIR_LOCAL_CACHE_TF_DNS_RECORD
   fi
   yq delete -i $FILE_GENERATED_CONFIG "workspaces.(name==$WORKSPACE).ingress"
+  
+  cleanup_provider
   cleanup_caches $WORKSPACE
 
   echo Destroying Kubernetes nginx ingress controller for workspace \'$WORKSPACE\'...success.

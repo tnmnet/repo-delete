@@ -25,6 +25,34 @@ verify_configuration ()
   return 0
 }
 
+# Initializes any provider-specific resources
+init_provider ()
+{
+  # Check if appropriate service-linked role for load balancing exists (needed for kops)
+  # This is usually the case if at any point a load balancer had been created and the role has not explicitly be deleted
+  # However, in completely fresh environments this role likely does not exist yet
+  # Check first if the role can be obtained...
+  set +e
+  aws iam get-role --role-name AWSServiceRoleForElasticLoadBalancing > /dev/null 2>&1
+  return_code=$(echo $?)
+  set -e
+  # ... and if not create the role
+  if [ $return_code -gt 0 ]; then
+    aws iam create-service-linked-role --aws-service-name "elasticloadbalancing.amazonaws.com" > /dev/null
+  fi
+
+  return 0
+}
+
+# Cleans up provider-specific resources if necessary
+cleanup_provider ()
+{
+  # We purposely chose not to clean up the service-linked role for load balancing as it
+  # may be needed for other load balancers, checking all dependend resources and determining
+  # if they should also be deleted is outside the scope of this script
+  return 0
+}
+
 # Returns the json path to determine the IP address or domain name
 # of the load balancer for the ingress controller
 lb_address ()
