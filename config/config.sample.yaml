@@ -32,7 +32,8 @@ kubernetes-components:
 #
 # gitlab
 - name: gitlab
-  project-id        : "ID of a project in GitLab"
+  integration-type  : "project"       # 'project' or 'group'
+  integration-id    : "ID of a project or group to integrate into the Kubernetes cluster"
   cluster-name      : "Name of the Kubernetes cluster displayed in GitLab"
 #
 # vault

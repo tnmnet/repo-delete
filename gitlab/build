@@ -46,8 +46,11 @@ export KUBECONFIG
 verify_conf_value $SECRETS_FILE "workspaces.(name==$WORKSPACE).gitlab.personal-token"
 GITLAB_PERSONAL_TOKEN=$verify_conf_value_retval
 
-verify_conf_value $CONFIG_FILE "kubernetes-components.(name==gitlab).project-id"
-GITLAB_PROJECT_ID=$verify_conf_value_retval
+verify_conf_value $CONFIG_FILE "kubernetes-components.(name==gitlab).integration-type"
+GITLAB_INTEGRATION_TYPE=$verify_conf_value_retval
+
+verify_conf_value $CONFIG_FILE "kubernetes-components.(name==gitlab).integration-id"
+GITLAB_INTEGRATION_ID=$verify_conf_value_retval
 
 verify_conf_value $CONFIG_FILE "kubernetes-components.(name==gitlab).cluster-name"
 GITLAB_CLUSTER_NAME=$verify_conf_value_retval
@@ -92,8 +95,16 @@ build_up ()
   # Add cluster to GitLab
   #  --trace-ascii - \
   echo Adding cluster to GitLab...
-  curl -s -o /dev/null \
-    https://gitlab.com/api/v4/projects/$GITLAB_PROJECT_ID/clusters/user \
+  GITLAB_URL="GitLab URL currently invalid"
+  if [ $GITLAB_INTEGRATION_TYPE = "group" ]; then
+    GITLAB_URL="https://gitlab.com/api/v4/groups/$GITLAB_INTEGRATION_ID/clusters/user"
+  elif [ $GITLAB_INTEGRATION_TYPE = "project" ]; then
+    GITLAB_URL="https://gitlab.com/api/v4/projects/$GITLAB_INTEGRATION_ID/clusters/user"
+  else
+    echo $'\e[1;31m'"ERROR>>> GitLab integration type not known ('$GITLAB_INTEGRATION_TYPE'), exiting!"$'\e[0m' 1>&2
+    return 1
+  fi
+  curl -s -o /dev/null $GITLAB_URL \
     -H "Authorization: Bearer $GITLAB_PERSONAL_TOKEN" \
     -H "Accept: application/json" \
     -H "Content-Type:application/json" \
@@ -109,14 +120,35 @@ tear_down ()
 {
   echo Removing GitLab configuration for Kubernetes for workspace \'$WORKSPACE\'...
 
-  CLUSTER_ID=$(curl -s https://gitlab.com/api/v4/projects/$GITLAB_PROJECT_ID/clusters \
+  echo Removing Kubernetes cluster integration in GitLab...
+
+  CLUSTER_ID_URL="Cluster ID URL currently not valid"
+  if [ $GITLAB_INTEGRATION_TYPE = "group" ]; then
+    CLUSTER_ID_URL="https://gitlab.com/api/v4/groups/$GITLAB_INTEGRATION_ID/clusters"
+  elif [ $GITLAB_INTEGRATION_TYPE = "project" ]; then
+    CLUSTER_ID_URL="https://gitlab.com/api/v4/projects/$GITLAB_INTEGRATION_ID/clusters"
+  else
+    echo $'\e[1;31m'"ERROR>>> GitLab integration type not known ('$GITLAB_INTEGRATION_TYPE'), exiting!"$'\e[0m' 1>&2
+    return 1
+  fi
+  CLUSTER_ID=$(curl -s $CLUSTER_ID_URL \
     -H "Authorization: Bearer $GITLAB_PERSONAL_TOKEN" \
     | jq --arg cname "$GITLAB_CLUSTER_NAME" '.[] | select(.name == $cname) | .id' )
 
-  echo Removing Kubernetes cluster integration in GitLab...
-  curl -s https://gitlab.com/api/v4/projects/$GITLAB_PROJECT_ID/clusters/$CLUSTER_ID \
+  GITLAB_URL="GitLab URL currently invalid"
+  if [ $GITLAB_INTEGRATION_TYPE = "group" ]; then
+    GITLAB_URL="https://gitlab.com/api/v4/groups/$GITLAB_INTEGRATION_ID/clusters/$CLUSTER_ID"
+  elif [ $GITLAB_INTEGRATION_TYPE = "project" ]; then
+    GITLAB_URL="https://gitlab.com/api/v4/projects/$GITLAB_INTEGRATION_ID/clusters/$CLUSTER_ID"
+  else
+    echo $'\e[1;31m'"ERROR>>> GitLab integration type not known ('$GITLAB_INTEGRATION_TYPE'), exiting!"$'\e[0m' 1>&2
+    return 1
+  fi
+
+  curl -s $GITLAB_URL \
     -H "Authorization: Bearer $GITLAB_PERSONAL_TOKEN" \
     -X DELETE
+
   echo Removing Kubernetes cluster integration in GitLab... success.
 
   # Destroy GitLab objects in Kubernetes
