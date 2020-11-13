@@ -9,13 +9,14 @@ workspaces:
   provider:
     name: aws
     default-region: "us-east-2"
-    backend:
-      name-prefix       : "backend"
-    kubernetes:
-      cluster-type      : "kops"                      # EKS or kops or okd
-      kops-state-store-prefix : "kops-state"
-      ingress-dns-zone  : "challenge.validatekvsetlabs.com"   # this needs to be already configured
-    installed-components:                             # Specifies, which components are installed on Kubernetes
+  backend:
+    name-prefix       : "backend"
+  kubernetes:
+    version           : "1.17.13"
+    cluster-type      : "kops"                      # EKS or kops or okd
+    kops-state-store-prefix : "kops-state"
+    ingress-dns-zone  : "challenge.validatekvsetlabs.com"   # this needs to be already configured
+  installed-components:                             # Specifies, which components are installed on Kubernetes
     ingress           : true
     gitlab            : false
     vault             : false

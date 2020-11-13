@@ -10,6 +10,9 @@ verify_configuration ()
   # Check presence of CLI
   verify_tool "aws"
 
+  verify_conf_value $CONFIG_FILE "workspaces.(name==$WORKSPACE).kubernetes.version"
+  K8S_VERSION=$verify_conf_value_retval
+
   verify_conf_value $CONFIG_FILE "workspaces.(name==$WORKSPACE).kubernetes.kops-state-store-prefix"
   KOPS_STATE_BUCKET_NAME_PREFIX=$verify_conf_value_retval
   KOPS_STATE_BUCKET_NAME="$KOPS_STATE_BUCKET_NAME_PREFIX-$WORKSPACE"
@@ -52,6 +55,7 @@ build_kubernetes ()
   # Availability zone 'b' below is chosen randomly
   echo "Creating cluster manifest..."
   kops create cluster \
+      --kubernetes-version "$K8S_VERSION" \
       --zones ${AWS_DEFAULT_REGION}b \
       --node-count 2 \
       --ssh-public-key "$DIR_LOCAL_CACHE_WKS/$KEY_PAIR_NAME.secrets.pub" \
