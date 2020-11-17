@@ -21,9 +21,9 @@ RUN wget --quiet https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip \
 
 # Terraform
 RUN wget --quiet https://releases.hashicorp.com/terraform/0.13.5/terraform_0.13.5_linux_amd64.zip \
-  && unzip terraform_0.12.28_linux_amd64.zip \
+  && unzip terraform_0.13.5_linux_amd64.zip \
   && mv terraform /usr/bin \
-  && rm terraform_0.12.28_linux_amd64.zip
+  && rm terraform_0.13.5_linux_amd64.zip
 
 # Vault
 RUN wget --quiet https://releases.hashicorp.com/vault/1.4.2/vault_1.4.2_linux_amd64.zip \
