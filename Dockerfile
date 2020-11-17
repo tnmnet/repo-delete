@@ -20,7 +20,7 @@ RUN wget --quiet https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip \
   && ./aws/install
 
 # Terraform
-RUN wget --quiet https://releases.hashicorp.com/terraform/0.12.28/terraform_0.12.28_linux_amd64.zip \
+RUN wget --quiet https://releases.hashicorp.com/terraform/0.13.5/terraform_0.13.5_linux_amd64.zip \
   && unzip terraform_0.12.28_linux_amd64.zip \
   && mv terraform /usr/bin \
   && rm terraform_0.12.28_linux_amd64.zip
