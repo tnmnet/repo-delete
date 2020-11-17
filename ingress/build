@@ -77,9 +77,8 @@ build_up ()
   init_provider
 
   echo Installing Helm chart...
-  helm repo add nginx https://helm.nginx.com/stable
-  helm repo update
-  helm install $INGRESS_CTR_NAME nginx/nginx-ingress -f $SCRIPT_PATH/ingress-config.yaml > /dev/null
+  helm repo add ingress-nginx-repo https://kubernetes.github.io/ingress-nginx
+  helm install $INGRESS_CTR_NAME ingress-nginx-repo/ingress-nginx -f $SCRIPT_PATH/ingress-config.yaml > /dev/null
   echo Installing Helm chart...success.
 
   echo
@@ -120,7 +119,7 @@ tear_down ()
   echo Destroying Kubernetes nginx ingress controller for workspace \'$WORKSPACE\'...
 
   helm delete $INGRESS_CTR_NAME
-  helm repo remove nginx
+  helm repo remove ingress-nginx-repo
 
   destroy_ingress
   if [ -d "$DIR_LOCAL_CACHE_TF_DNS_RECORD" ]; then
