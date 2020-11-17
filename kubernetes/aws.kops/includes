@@ -91,7 +91,7 @@ build_kubernetes ()
   echo "Waiting for 'kube-config' to be available...done."
 
   # Wait for the cluster to be fully initialized
-  declare -i wait=15          # in minutes
+  declare -i wait=12          # in minutes
   declare -i sleeptime=10     # in seconds
   echo "Waiting for the Kubernetes cluster to be available (about $wait minutes)..."
   declare -i max_counter=$(($wait * 60 / $sleeptime))
