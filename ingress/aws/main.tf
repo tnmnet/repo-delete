@@ -53,7 +53,7 @@ locals {
 
 # Create DNS record
 data "aws_route53_zone" "k8s" {
-  name = "${var.zone_name}"
+  name = var.zone_name
 }
 
 # --- Zone alias to point to the load balancer
