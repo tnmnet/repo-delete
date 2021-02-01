@@ -40,7 +40,13 @@ kubernetes-components:
 # vault
 - name: vault
   public-dns-prefix : "vault"
-
+#
+# letsencrypt (letsencrypt)
+- name: letsencrypt
+#
+# jenkins (jenkins)
+- name: jenkins
+  helm-label : "jenkins"
 
 # -------------------------------------------------------------------
 # Do not change any values below

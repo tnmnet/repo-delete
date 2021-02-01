@@ -1,0 +1,90 @@
+#!/bin/bash
+# Parameters:
+# Workspace label, used to distinguish between different environments.
+#   The workspace needs to be configured in the global configuration file,
+#   also, the secrets file for the workspace need to exist.
+#   Syntax: -w {name of the label}
+# Build direction, used to either build the demo or destroy it.
+#   Values can be either up (-u) or down (-d).
+#   Syntax: -u|-d
+
+# Figure out where we are
+ORIGIN_PATH=$(pwd)
+SCRIPT_PATH=$(cd $(dirname $0); pwd)
+ROOT_PATH=$SCRIPT_PATH/..
+
+CONFIG_PATH=$ROOT_PATH/config
+[[ ! -d "$CONFIG_PATH" ]] && { echo $'\e[1;31m'"ERROR>>> Configuration volume not mounted at '$CONFIG_PATH', exiting!"$'\e[0m' >&2; exit 1; }
+export CONFIG_FILE=$CONFIG_PATH/config.yaml
+[[ ! -f "$CONFIG_FILE" ]] && { echo $'\e[1;31m'"ERROR>>> Missing configuration file at '$CONFIG_FILE', exiting!"$'\e[0m' 1>&2 ; exit 1; }
+export SECRETS_FILE=$CONFIG_PATH/secrets.yaml
+[[ ! -f "$SECRETS_FILE" ]] && { echo $'\e[1;31m'"ERROR>>> Missing secrets file at '$SECRETS_FILE', exiting!"$'\e[0m' 1>&2 ; exit 1; }
+
+source $ROOT_PATH/functions
+
+# Parse parameters
+BUILD=
+WORKSPACE=
+parse_args
+
+# Verify configuration
+DIR_LOCAL_CACHE=
+DIR_LOCAL_CACHE_WKS=
+DIR_LOCAL_CACHE_TF=
+FILE_GENERATED_CONFIG=
+PROVIDER=
+CLUSTER_TYPE=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_DEFAULT_REGION=
+verify_common_conf $WORKSPACE
+
+verify_conf_value $CONFIG_FILE "kubernetes-components.(name==letsencrypt).helm-label"
+HELMREPO_LABEL=$verify_conf_value_retval
+
+KUBECONFIG=$DIR_LOCAL_CACHE_WKS/kube-config
+[[ ! -f "$KUBECONFIG" ]] && { echo $'\e[1;31m'"ERROR>>> Missing kube-config file for workspace '$WORKSPACE', exiting!"$'\e[0m' 1>&2 ; exit 1; }
+export KUBECONFIG
+
+# ---------------------------------------------------------
+# Run actual scripts
+build_up ()
+{
+  set -e
+  echo "Installating LetsEncrypt component for workspace '$WORKSPACE'..."
+  echo "Installing Cert-Manager."
+  kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v0.16.1/cert-manager.yaml
+  sleep 60
+  echo "Installing Cert-Manager....success"
+  echo "Installing LetsEncrypt Cert Issuers"
+  kubectl apply -f letsencrypt-staging-issuer.yaml
+  kubectl apply -f letsencrypt-prod-issuer.yaml
+  echo "Installing LetsEncrypt Cert Issuers...success."
+  echo "Installating LetsEncrypt component for workspace '$WORKSPACE'...success."
+  return 0
+}
+
+
+tear_down ()
+{
+  echo "Removing jenkins component for workspace '$WORKSPACE'..."
+  kubectl delete -f letsencrypt-staging-issuer.yaml
+  kubectl delete -f letsencrypt-prod-issuer.yaml
+  kubectl delete -f https://github.com/jetstack/cert-manager/releases/download/v0.16.1/cert-manager.yaml
+  echo "Removing jenkins component for workspace '$WORKSPACE'...success."
+  return 0
+}
+
+
+# Build up or tear down based on build direction
+case $BUILD in
+  u)
+    build_up
+    ;;
+  d)
+    tear_down
+    ;;
+esac
+
+# All done
+cd $ORIGIN_PATH
