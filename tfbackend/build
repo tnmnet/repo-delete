@@ -1,0 +1,104 @@
+#!/bin/bash
+# Parameters:
+# Workspace label, used to distinguish between different environments.
+#   The workspace needs to be configured in the global configuration file,
+#   also, the secrets file for the workspace need to exist.
+#   Syntax: -w {name of the label}
+# Build direction, used to either build the demo or destroy it.
+#   Values can be either up (-u) or down (-d).
+#   Syntax: -u|-d
+
+# Figure out where we are
+ORIGIN_PATH=$(pwd)
+SCRIPT_PATH=$(cd $(dirname $0); pwd)
+ROOT_PATH=$SCRIPT_PATH/..
+
+CONFIG_PATH=$ROOT_PATH/config
+[[ ! -d "$CONFIG_PATH" ]] && { echo $'\e[1;31m'"ERROR>>> Configuration volume not mounted at '$CONFIG_PATH', exiting!"$'\e[0m' >&2; exit 1; }
+export CONFIG_FILE=$CONFIG_PATH/config.yaml
+[[ ! -f "$CONFIG_FILE" ]] && { echo $'\e[1;31m'"ERROR>>> Missing configuration file at '$CONFIG_FILE', exiting!"$'\e[0m' 1>&2 ; exit 1; }
+export SECRETS_FILE=$CONFIG_PATH/secrets.yaml
+[[ ! -f "$SECRETS_FILE" ]] && { echo $'\e[1;31m'"ERROR>>> Missing secrets file at '$SECRETS_FILE', exiting!"$'\e[0m' 1>&2 ; exit 1; }
+
+source $ROOT_PATH/functions
+
+# Parse parameters
+BUILD=
+WORKSPACE=
+parse_args
+
+# Verify configuration
+DIR_LOCAL_CACHE=
+DIR_LOCAL_CACHE_WKS=
+DIR_LOCAL_CACHE_TF=
+FILE_GENERATED_CONFIG=
+PROVIDER=
+CLUSTER_TYPE=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_DEFAULT_REGION=
+verify_common_conf $WORKSPACE
+
+# Source provider appropriate functions
+source $SCRIPT_PATH/$PROVIDER/includes
+
+# Verify provider specific configuration
+# AWS
+REGION=
+NAME_PREFIX=
+ACCESS_KEY=
+SECRET_KEY=
+# Azure
+RESOURCE_GROUP_NAME=
+STORAGE_ACCOUNT_NAME=
+STORAGE_CONTAINER_NAME=
+# ---
+verify_configuration
+
+# Set cache directory and log level for this Terraform part
+DIR_LOCAL_CACHE_TF_TFBACKEND=$DIR_LOCAL_CACHE_TF/tfbackend
+
+# ---------------------------------------------------------
+# Run actual scripts
+build_up ()
+{
+  set -e
+  echo Building Terraform backend for workspace \'$WORKSPACE\'...
+
+  init_caches $WORKSPACE
+  if [ ! -d "$DIR_LOCAL_CACHE_TF_TFBACKEND" ]; then
+    mkdir -p $DIR_LOCAL_CACHE_TF_TFBACKEND
+  fi
+  build_backend
+  echo Building Terraform backend for workspace \'$WORKSPACE\'...success.
+
+  return 0
+}
+
+tear_down ()
+{
+  echo Tearing down Terraform backend for workspace \'$WORKSPACE\'...
+
+  destroy_backend
+  # Clean up local caches
+  if [ -d "$DIR_LOCAL_CACHE_TF_TFBACKEND" ]; then
+    rm -rf $DIR_LOCAL_CACHE_TF_TFBACKEND
+  fi
+  cleanup_caches $WORKSPACE
+  echo Tearing down Terraform backend for workspace \'$WORKSPACE\'...success.
+
+  return 0
+}
+
+# Build up or tear down based on build direction
+case $BUILD in
+  u)
+    build_up
+    ;;
+  d)
+    tear_down
+    ;;
+esac
+
+# All done
+cd $ORIGIN_PATH

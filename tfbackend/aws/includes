@@ -1,0 +1,56 @@
+# Verify configuration parameters specific for AWS as a sanity check and fail-fast.
+# Parameters:
+#   1) path of the configuration file
+#   2) path of the secrets configuration file
+#   2) workspace label
+# Return:
+#   sets global constants
+verify_configuration ()
+{
+  # Check presence of CLI, which is needed for the demo
+  verify_tool "aws"
+
+  verify_conf_value $CONFIG_FILE "workspaces.(name==$WORKSPACE).backend.name-prefix"
+  NAME_PREFIX=$verify_conf_value_retval
+
+  return 0
+}
+
+
+# Executes the script specific for AWS to create the Terraform backend storage.
+# Make sure variables are set accordingly.
+build_backend ()
+{
+  cd $DIR_LOCAL_CACHE_TF_TFBACKEND
+  if [ ! "$(ls -A $DIR_LOCAL_CACHE_TF_TFBACKEND)" ]; then
+    terraform init -from-module $SCRIPT_PATH/$PROVIDER
+    sleep 3
+  fi
+
+  terraform apply -auto-approve \
+    -var="access_key=$AWS_ACCESS_KEY_ID" \
+    -var="secret_key=$AWS_SECRET_ACCESS_KEY" \
+    -var="region=$AWS_DEFAULT_REGION" \
+    -var="name_prefix=$NAME_PREFIX-$WORKSPACE"
+
+  yq w -i $FILE_GENERATED_CONFIG "workspaces.(name==$WORKSPACE).backend.bucket-id" $(terraform output bucket_id)
+  yq w -i $FILE_GENERATED_CONFIG "workspaces.(name==$WORKSPACE).backend.lock-table-id" $(terraform output lock_table_id)
+
+  return 0
+}
+
+# Destroys the backed in AWS
+destroy_backend ()
+{
+  cd $DIR_LOCAL_CACHE_TF_TFBACKEND
+
+  terraform destroy -auto-approve \
+    -var="access_key=$AWS_ACCESS_KEY_ID" \
+    -var="secret_key=$AWS_SECRET_ACCESS_KEY" \
+    -var="region=$AWS_DEFAULT_REGION" \
+    -var="name_prefix=$NAME_PREFIX-$WORKSPACE"
+
+  yq delete -i $FILE_GENERATED_CONFIG "workspaces.(name==$WORKSPACE).backend"
+
+  return 0
+}

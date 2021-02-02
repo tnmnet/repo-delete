@@ -1,0 +1,144 @@
+#!/bin/bash
+
+# When running the docker container use:
+# docker run -it \
+#     -v <absolute-path-to-your-config-directory>:/platform/config \
+#     -e 'CMD=<u|d|l>' \
+#     -e 'WKS=<name-of-a-configured-workspace>' \
+#     registry.gitlab.com/gditappservices/demo:latest
+
+# Figure out where we are
+ORIGIN_PATH=$(pwd)
+SCRIPT_PATH=$(cd $(dirname $0); pwd)
+ROOT_PATH=$SCRIPT_PATH
+
+export CONFIG_PATH=$ROOT_PATH/config
+[[ ! -d "$CONFIG_PATH" ]] && { echo $'\e[1;31m'"ERROR>>> Configuration volume not mounted at '$CONFIG_PATH', exiting!"$'\e[0m' >&2; exit 1; }
+export CONFIG_FILE=$CONFIG_PATH/config.yaml
+[[ ! -f "$CONFIG_FILE" ]] && { echo $'\e[1;31m'"ERROR>>> Missing configuration file at '$CONFIG_FILE', exiting!"$'\e[0m' 1>&2 ; exit 1; }
+export SECRETS_FILE=$CONFIG_PATH/secrets.yaml
+[[ ! -f "$SECRETS_FILE" ]] && { echo $'\e[1;31m'"ERROR>>> Missing secrets file at '$SECRETS_FILE', exiting!"$'\e[0m' 1>&2 ; exit 1; }
+
+source $ROOT_PATH/functions
+
+BUILD=
+WORKSPACE=
+parse_args
+
+build_up ()
+{
+  set -e
+
+  echo
+  echo "Building the following components (can be changed in config.yaml):"
+  echo $'\e[1;32m'"tfbackend: true"$'\e[0m'
+  echo $'\e[1;32m'"kubernetes: true"$'\e[0m'
+  key=
+  COMPONENTS=$(yq r $CONFIG_FILE "workspaces.(name==$WORKSPACE).installed-components")
+  for component in $COMPONENTS
+  do
+    if [ "$key" == "" ]; then
+      key=$component
+    else
+      if [ "$component" == "true" ]; then
+        echo $'\e[1;32m'"$key $component"$'\e[0m'
+      else
+        echo "$key $component"      
+      fi
+      key=
+    fi
+  done
+  echo
+
+  read -p $'\e[1;34m''Build the USCIS SPEED stack (about 20 minutes), only "yes" will work?: '$'\e[0m' answer
+  if [ "$answer" != "yes" ]; then
+    exit 0
+  fi
+
+  # Order of components is important
+  $ROOT_PATH/tfbackend/build
+  $ROOT_PATH/kubernetes/build
+
+  # Kubernetes components
+  verify_conf_value $CONFIG_FILE "workspaces.(name==$WORKSPACE).installed-components.ingress"
+  [[ "$verify_conf_value_retval" == "true"  ]] && { $ROOT_PATH/ingress/build; }
+
+  verify_conf_value $CONFIG_FILE "workspaces.(name==$WORKSPACE).installed-components.gitlab"
+  [[ "$verify_conf_value_retval" == "true"  ]] && { $ROOT_PATH/gitlab/build; }
+
+  verify_conf_value $CONFIG_FILE "workspaces.(name==$WORKSPACE).installed-components.vault"
+  [[ "$verify_conf_value_retval" == "true"  ]] && { $ROOT_PATH/vault/build; }
+  
+  return 0
+}
+
+tear_down ()
+{
+  echo
+  echo "Tearing down the following components (can be changed in config.yaml):"
+  echo $'\e[1;32m'"tfbackend: true"$'\e[0m'
+  echo $'\e[1;32m'"kubernetes: true"$'\e[0m'
+  key=
+  COMPONENTS=$(yq r $CONFIG_FILE "workspaces.(name==$WORKSPACE).installed-components")
+  for component in $COMPONENTS
+  do
+    if [ "$key" == "" ]; then
+      key=$component
+    else
+      if [ "$component" == "true" ]; then
+        echo $'\e[1;32m'"$key $component"$'\e[0m'
+      else
+        echo "$key $component"      
+      fi
+      key=
+    fi
+  done
+  echo
+
+  read -p $'\e[1;34m''Destroy the USCIS SPEED stack (about 20 minutes), only "yes" will work?: '$'\e[0m' answer
+  if [ "$answer" != "yes" ]; then
+    exit 0
+  fi
+  
+  # Kubernetes components
+  verify_conf_value $CONFIG_FILE "workspaces.(name==$WORKSPACE).installed-components.vault"
+  [[ "$verify_conf_value_retval" == "true"  ]] && { $ROOT_PATH/vault/build; }
+
+  verify_conf_value $CONFIG_FILE "workspaces.(name==$WORKSPACE).installed-components.gitlab"
+  [[ "$verify_conf_value_retval" == "true"  ]] && { $ROOT_PATH/gitlab/build; }
+
+  verify_conf_value $CONFIG_FILE "workspaces.(name==$WORKSPACE).installed-components.ingress"
+  [[ "$verify_conf_value_retval" == "true"  ]] && { $ROOT_PATH/ingress/build; }
+  
+  # Order of components is important
+  $ROOT_PATH/kubernetes/build
+  $ROOT_PATH/tfbackend/build
+  
+  return 0
+}
+
+# Build up or tear down based on build direction
+if [ -z "$LIST" ]; then
+  SECONDS=0
+  START=$(date)
+  case $BUILD in
+    u)
+      build_up
+      ;;
+    d)
+      tear_down
+      ;;
+  esac
+  echo
+  DURATION=$SECONDS
+  echo Start time: $START
+  echo Finish time: $(date)
+  echo "Elapsed time: $(($DURATION / 60))m:$(($DURATION % 60))s"
+  echo
+else
+  list_workspaces $CONFIG_FILE
+fi
+
+# ---------------------------------------------------------
+# All done
+cd $ORIGIN_PATH

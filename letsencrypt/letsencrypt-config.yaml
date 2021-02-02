@@ -1,0 +1,2 @@
+labels:
+  app.kubernetes.io/part-of: devops-demo

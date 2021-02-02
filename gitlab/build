@@ -1,0 +1,175 @@
+#!/bin/bash
+# Parameters:
+# Workspace label, used to distinguish between different environments.
+#   The workspace needs to be configured in the global configuration file,
+#   also, the secrets file for the workspace need to exist.
+#   Syntax: -w {name of the label}
+# Build direction, used to either build the demo or destroy it.
+#   Values can be either up (-u) or down (-d).
+#   Syntax: -u|-d
+
+# Figure out where we are
+ORIGIN_PATH=$(pwd)
+SCRIPT_PATH=$(cd $(dirname $0); pwd)
+ROOT_PATH=$SCRIPT_PATH/..
+
+CONFIG_PATH=$ROOT_PATH/config
+[[ ! -d "$CONFIG_PATH" ]] && { echo $'\e[1;31m'"ERROR>>> Configuration volume not mounted at '$CONFIG_PATH', exiting!"$'\e[0m' >&2; exit 1; }
+export CONFIG_FILE=$CONFIG_PATH/config.yaml
+[[ ! -f "$CONFIG_FILE" ]] && { echo $'\e[1;31m'"ERROR>>> Missing configuration file at '$CONFIG_FILE', exiting!"$'\e[0m' 1>&2 ; exit 1; }
+export SECRETS_FILE=$CONFIG_PATH/secrets.yaml
+[[ ! -f "$SECRETS_FILE" ]] && { echo $'\e[1;31m'"ERROR>>> Missing secrets file at '$SECRETS_FILE', exiting!"$'\e[0m' 1>&2 ; exit 1; }
+
+source $ROOT_PATH/functions
+
+# Parse parameters
+BUILD=
+WORKSPACE=
+parse_args
+
+# Verify configuration
+DIR_LOCAL_CACHE=
+DIR_LOCAL_CACHE_WKS=
+DIR_LOCAL_CACHE_TF=
+FILE_GENERATED_CONFIG=
+PROVIDER=
+CLUSTER_TYPE=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_DEFAULT_REGION=
+verify_common_conf $WORKSPACE
+
+KUBECONFIG=$DIR_LOCAL_CACHE_WKS/kube-config
+[[ ! -f "$KUBECONFIG" ]] && { echo $'\e[1;31m'"ERROR>>> Missing kube-config file for workspace '$WORKSPACE', exiting!"$'\e[0m' 1>&2 ; exit 1; }
+export KUBECONFIG
+
+verify_conf_value $SECRETS_FILE "workspaces.(name==$WORKSPACE).gitlab.personal-token"
+GITLAB_PERSONAL_TOKEN=$verify_conf_value_retval
+
+verify_conf_value $CONFIG_FILE "kubernetes-components.(name==gitlab).integration-type"
+GITLAB_INTEGRATION_TYPE=$verify_conf_value_retval
+
+verify_conf_value $CONFIG_FILE "kubernetes-components.(name==gitlab).integration-id"
+GITLAB_INTEGRATION_ID=$verify_conf_value_retval
+
+verify_conf_value $CONFIG_FILE "kubernetes-components.(name==gitlab).cluster-name"
+GITLAB_CLUSTER_NAME=$verify_conf_value_retval
+
+# Base domain for GitLab's AutoDevOps feature (DNS where applications get deployed)
+# This should match the endpoint for an ingress controller,
+# e.g. the one provided during when the ingress-controller was setup
+verify_conf_value $FILE_GENERATED_CONFIG "workspaces.(name==$WORKSPACE).ingress.public-address"
+GITLAB_CLUSTER_BASE_DOMAIN=$verify_conf_value_retval
+
+# ---------------------------------------------------------
+# Run actual scripts
+build_up ()
+{
+  set -e
+  echo Setting up GitLab configuration for Kubernetes for workspace \'$WORKSPACE\'...
+
+  # Create mandatory objects for GitLab to work in Kubernetes
+  # ServiceAccount and (Cluster)RoleBinding
+  echo Applying Kubernetes objects necessary for GitLab integration...
+  kubectl apply -f $SCRIPT_PATH/gitlab-objects.yaml
+  echo Applying Kubernetes objects necessary for GitLab integration...success.
+
+  # kubectl API server
+  API_SERVER=$(kubectl config view | awk '/server:/ {print $2}')
+  echo Kubernetes API endpoint to be added to GitLab: $API_SERVER
+
+  # Get certificate starting with 'default-token...' with:
+  K8S_CERT=$(kubectl get secret \
+    $(kubectl get secrets | awk '/default-token/ {print $1}') \
+    -o jsonpath="{['data']['ca\.crt']}" \
+    | base64 --decode \
+    | awk '{printf "%s\\r\\n", $0}' \
+    )
+
+  # Retrieve the token for the 'eks-admin' service account:
+  KUBE_TOKEN=$(kubectl -n kube-system describe secret \
+    $(kubectl -n kube-system get secret | awk '/eks-admin/ {print $1}') \
+    | awk '/token:/ {print $2}' \
+    )
+
+  # Add cluster to GitLab
+  #  --trace-ascii - \
+  echo Adding cluster to GitLab...
+  GITLAB_URL="GitLab URL currently invalid"
+  if [ $GITLAB_INTEGRATION_TYPE = "group" ]; then
+    GITLAB_URL="https://gitlab.com/api/v4/groups/$GITLAB_INTEGRATION_ID/clusters/user"
+  elif [ $GITLAB_INTEGRATION_TYPE = "project" ]; then
+    GITLAB_URL="https://gitlab.com/api/v4/projects/$GITLAB_INTEGRATION_ID/clusters/user"
+  else
+    echo $'\e[1;31m'"ERROR>>> GitLab integration type not known ('$GITLAB_INTEGRATION_TYPE'), exiting!"$'\e[0m' 1>&2
+    return 1
+  fi
+  curl -s -o /dev/null $GITLAB_URL \
+    -H "Authorization: Bearer $GITLAB_PERSONAL_TOKEN" \
+    -H "Accept: application/json" \
+    -H "Content-Type:application/json" \
+    -X POST \
+    -d "{\"name\":\"$GITLAB_CLUSTER_NAME\",\"domain\":\"$GITLAB_CLUSTER_BASE_DOMAIN\",\"platform_kubernetes_attributes\":{\"api_url\":\"$API_SERVER\",\"token\":\"$KUBE_TOKEN\",\"ca_cert\":\"$K8S_CERT\"}}"
+  echo Adding cluster to GitLab... done.
+
+  echo Setting up GitLab configuration for Kubernetes for workspace \'$WORKSPACE\'...success.
+  return 0
+}
+
+tear_down ()
+{
+  echo Removing GitLab configuration for Kubernetes for workspace \'$WORKSPACE\'...
+
+  echo Removing Kubernetes cluster integration in GitLab...
+
+  CLUSTER_ID_URL="Cluster ID URL currently not valid"
+  if [ $GITLAB_INTEGRATION_TYPE = "group" ]; then
+    CLUSTER_ID_URL="https://gitlab.com/api/v4/groups/$GITLAB_INTEGRATION_ID/clusters"
+  elif [ $GITLAB_INTEGRATION_TYPE = "project" ]; then
+    CLUSTER_ID_URL="https://gitlab.com/api/v4/projects/$GITLAB_INTEGRATION_ID/clusters"
+  else
+    echo $'\e[1;31m'"ERROR>>> GitLab integration type not known ('$GITLAB_INTEGRATION_TYPE'), exiting!"$'\e[0m' 1>&2
+    return 1
+  fi
+  CLUSTER_ID=$(curl -s $CLUSTER_ID_URL \
+    -H "Authorization: Bearer $GITLAB_PERSONAL_TOKEN" \
+    | jq --arg cname "$GITLAB_CLUSTER_NAME" '.[] | select(.name == $cname) | .id' )
+
+  GITLAB_URL="GitLab URL currently invalid"
+  if [ $GITLAB_INTEGRATION_TYPE = "group" ]; then
+    GITLAB_URL="https://gitlab.com/api/v4/groups/$GITLAB_INTEGRATION_ID/clusters/$CLUSTER_ID"
+  elif [ $GITLAB_INTEGRATION_TYPE = "project" ]; then
+    GITLAB_URL="https://gitlab.com/api/v4/projects/$GITLAB_INTEGRATION_ID/clusters/$CLUSTER_ID"
+  else
+    echo $'\e[1;31m'"ERROR>>> GitLab integration type not known ('$GITLAB_INTEGRATION_TYPE'), exiting!"$'\e[0m' 1>&2
+    return 1
+  fi
+
+  curl -s $GITLAB_URL \
+    -H "Authorization: Bearer $GITLAB_PERSONAL_TOKEN" \
+    -X DELETE
+
+  echo Removing Kubernetes cluster integration in GitLab... success.
+
+  # Destroy GitLab objects in Kubernetes
+  # ServiceAccount and (Cluster)RoleBinding
+  echo Destroying Kubernetes objects necessary for GitLab integration...
+  kubectl delete -f $SCRIPT_PATH/gitlab-objects.yaml
+  echo Destroying Kubernetes objects necessary for GitLab integration... success.
+
+  echo Removing GitLab configuration for Kubernetes for workspace \'$WORKSPACE\'...success.
+  return 0
+}
+
+# Build up or tear down based on build direction
+case $BUILD in
+  u)
+    build_up
+    ;;
+  d)
+    tear_down
+    ;;
+esac
+
+# All done
+cd $ORIGIN_PATH

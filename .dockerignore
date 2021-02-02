@@ -1,0 +1,19 @@
+# Docker ignores
+.dockerignore
+.git
+.gitignore
+config
+Dockerfile
+docs
+**/*.md
+
+# Ignores from .gitignore
+secrets.yaml
+config.yaml
+*.auto.tfvars
+*.cache*
+*.tfstate*
+.terraform*
+.terraform.tfstate*
+.vscode
+~*
