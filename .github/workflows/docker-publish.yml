@@ -75,9 +75,9 @@ jobs:
           docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
           docker push $IMAGE_ID:$VERSION
 
-   depoly_to_aws_kops:
-     name: Create an EKS on Fargate cluster
-     steps:
+ depoly_to_aws_kops:
+   name: Create an EKS on Fargate cluster
+   steps:
      - name: Configure AWS credentials
        uses: aws-actions/configure-aws-credentials@v1
        with:
