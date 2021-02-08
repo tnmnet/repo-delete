@@ -1,4 +1,4 @@
-name: Docker 
+name: kops-publish 
 
 on:
   push:
@@ -12,27 +12,8 @@ on:
 
   # Run tests for any PRs.
   pull_request:
-    
-env:
-  # TODO: Change variable to your image's name.
-  IMAGE_NAME: gdit-infra-app-feb08
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  AWS_DEFAULT_REGION: us-east-2
-  AWS_DEFAULT_OUTPUT: json
-
+  
 jobs:
-  configure_aws:
-    runs-on: ubuntu-latest
-    name: Configure AWS credentials 
-    steps:
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: us-east-2
-
   test:
     runs-on: ubuntu-latest
     steps:
@@ -86,4 +67,14 @@ jobs:
 
           docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
           docker push $IMAGE_ID:$VERSION
-          
+ 
+  configure_aws:
+    runs-on: ubuntu-latest
+    name: Configure AWS credentials 
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-2
