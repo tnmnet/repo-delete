@@ -1,0 +1,23 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: simple-deployment
+  namespace: default
+  labels:
+    k8s-app: simple
+spec:
+  selector:
+    matchLabels:
+      k8s-app: simple
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        k8s-app: simple
+    spec:
+      containers:
+        - name: nginx
+          image: quay.io/coreos/example-app:v1.0
+          ports:
+            - name: http
+              containerPort: 80
