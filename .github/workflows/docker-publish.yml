@@ -10,7 +10,7 @@ on:
       - 'Dockerfile'
       - '.github/workflows/**'
 
-    # Publish `v1.2.3` tags as releases.
+    # Publish `v1.2.3` tags as releases
     tags:
       - v*
 
