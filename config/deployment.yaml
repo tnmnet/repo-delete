@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: quay.io/coreos/example-app:v1.0
+          image: https://github.com/tnmnet/Infrastructure-App-old/packages/602016
           ports:
             - name: http
               containerPort: 80
