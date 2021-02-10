@@ -17,7 +17,16 @@ spec:
     spec:
       containers:
         - name: nginx
-          image: https://github.com/tnmnet/Infrastructure-App-old/packages/602016
+          image: docker.pkg.github.com/tnmnet/infrastructure-app-old/gdit-infra-app:latest
           ports:
             - name: http
               containerPort: 80
+...
+apiVersion: v1
+kind: Secret
+metadata:
+  name: myregistrykey
+  namespace: awesomeapps
+data:
+  .dockerconfigjson: ewoJImF1dGhzIjogewoJCSJkb2NrZXIucGtnLmdpdGh1Yi5jb20iOiB7CgkJCSJhdXRoIjogImRHNXRibVYwT2pGaE1EWmhPR1ZpWm1FMVlUYzBabVZrTXpsak1qRmhOV1V5WWpSbVpHRmxOV0l3TlRJMFpqUT0iCgkJfSwKCQkiZ2hjci5pbyI6IHsKCQkJImF1dGgiOiAiZEc1dGJtVjBPalJoWTJVd05qa3pPV0ZpTmpNNFpUbG1NV0UzT1RobE1XRm1OVFU0TnprNFlXVmhORE0xTkRFPSIKCQl9LAoJCSJyZWdpc3RyeS5naXRsYWIuY29tIjogewoJCQkiYXV0aCI6ICJkSEpwZG1Wa2FUTXpPbEYxYVV0RGMyaGlVMVl6YzBWM1pVVkRTSGxIIgoJCX0KCX0sCgkiSHR0cEhlYWRlcnMiOiB7CgkJIlVzZXItQWdlbnQiOiAiRG9ja2VyLUNsaWVudC8xOS4wMy4xMyAobGludXgpIgoJfQp9
+type: kubernetes.io/dockerconfigjson
