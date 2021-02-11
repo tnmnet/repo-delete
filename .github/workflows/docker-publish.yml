@@ -90,9 +90,9 @@ jobs:
    
     - name: Trigger deploy
       uses: SecureYourInbox/kubernetes-deploy-action@v1.1
-      #with: 
-      #   entryPoint: 
-      #    deployment.yaml
+      with: 
+        manifests: |
+          deployment.yaml
       env:
         KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
 
