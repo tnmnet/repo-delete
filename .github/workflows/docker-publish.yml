@@ -92,7 +92,7 @@ jobs:
       uses: SecureYourInbox/kubernetes-deploy-action@v1.1
       with: 
         entryPoint: 
-          manifests/deployment.yaml
+          deployment.yaml
       env:
         KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
 
