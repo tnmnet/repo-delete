@@ -1,23 +1,19 @@
-apiVersion: apps/v1beta2
+apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: simple-deployment
-  namespace: default
-  labels:
-    k8s-app: simple
+  name: nginx-deployment
 spec:
   selector:
     matchLabels:
-      k8s-app: simple
-  replicas: 3
+      app: nginx
+  replicas: 2 # tells deployment to run 2 pods matching the template
   template:
     metadata:
       labels:
-        k8s-app: simple
+        app: nginx
     spec:
       containers:
-        - name: nginx
-          image: quay.io/coreos/example-app:v1.0
-          ports:
-            - name: http
-              containerPort: 80
+      - name: nginx
+        image: nginx:1.14.2
+        ports:
+        - containerPort: 80
