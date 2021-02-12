@@ -81,6 +81,6 @@ jobs:
         with:
           args: apply -f deployment.yaml
           
-      - name: Checkmarx CxFlow Action
-        uses: checkmarx-ts/checkmarx-cxflow-github-action@v1.1
+       #- name: Checkmarx CxFlow Action
+       #uses: checkmarx-ts/checkmarx-cxflow-github-action@v1.1
 
