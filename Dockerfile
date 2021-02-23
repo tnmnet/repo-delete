@@ -1,5 +1,5 @@
-FROM node:lts-alpine
-WORKDIR /usr/src/app
-COPY . .
-EXPOSE 5000
-CMD [ "npm", "start" ]
+ FROM node:12-alpine
+ WORKDIR /app
+ COPY . .
+ RUN yarn install --production
+ CMD ["node", "src/index.js"]
