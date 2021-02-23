@@ -76,8 +76,6 @@ jobs:
 
       - name: Trigger deploy
         uses: secureyourinbox/kubernetes-deploy-action@master
-        env:
-          KUBE_CONFIG_DATA: ${{ secrets.KUBE_CONFIG_DATA }}
         with:
           args: apply -f deployment.yaml
           
