@@ -24,8 +24,7 @@ jobs:
     steps: 
       - uses: anchore/scan-action@v2
         with: 
-          image: $IMAGE_NAME
-          fail-build: true
+          image: "$IMAGE_NAME"
 
   # Push image to GitHub Packages.
   push:
