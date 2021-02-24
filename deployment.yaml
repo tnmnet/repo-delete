@@ -1,27 +1,27 @@
 apiVersion: v1
 kind: Namespace 
 metadata:
-  name: new-app
+  name: new-app1
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: new-app
-  namespace: new-app
+  namespace: new-app1
   labels:
-    k8s-app: new-app
+    k8s-app: new-app1
 spec:
   selector:
     matchLabels:
-      k8s-app: new-app
+      k8s-app: new-app1
   replicas: 3
   template:
     metadata:
       labels:
-        k8s-app: new-app
+        k8s-app: new-app1
     spec:
       containers:
-        - name: new-app
+        - name: new-app1
           #image: docker.pkg.github.com/tnmnet/new-app/new-app:latest
           image: docker.pkg.github.com/tnmnet/demo-test-app-1/demo-test-app-1:v1
           ports:
@@ -34,7 +34,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: regkey1
-  namespace: new-app
+  namespace: new-app1
 data:
   .dockerconfigjson: ewoJImF1dGhzIjogewoJCSJkb2NrZXIucGtnLmdpdGh1Yi5jb20iOiB7CgkJCSJhdXRoIjogImRHNXRibVYwT2pObVlXRTRPVEUyTVRVek1UVXdOVGt4TW1FMk5UVTFNemxpWldRMFpqTTNNMlZsWkRrd09UYz0iCgkJfSwKCQkiZ2hjci5pbyI6IHsKCQkJImF1dGgiOiAiZEc1dGJtVjBPalJoWTJVd05qa3pPV0ZpTmpNNFpUbG1NV0UzT1RobE1XRm1OVFU0TnprNFlXVmhORE0xTkRFPSIKCQl9LAoJCSJyZWdpc3RyeS5naXRsYWIuY29tIjogewoJCQkiYXV0aCI6ICJkSEpwZG1Wa2FUTXpPbEYxYVV0RGMyaGlVMVl6YzBWM1pVVkRTSGxIIgoJCX0KCX0sCgkiSHR0cEhlYWRlcnMiOiB7CgkJIlVzZXItQWdlbnQiOiAiRG9ja2VyLUNsaWVudC8xOS4wMy4xMyAobGludXgpIgoJfQp9
 type: kubernetes.io/dockerconfigjson
