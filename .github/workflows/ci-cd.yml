@@ -22,9 +22,11 @@ jobs:
     name: 'Scan image'
     runs-on: ubuntu-latest
     steps: 
-      - uses: azure/container-scan@v0
-        with:
-          image-name: $IMAGE_NAME
+    - uses: anchore/scan-action@v2
+      id: scan
+      with:
+        image: "new-app"
+        acs-report-enable: true
 
   # Push image to GitHub Packages.
   push:
