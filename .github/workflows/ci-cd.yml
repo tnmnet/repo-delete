@@ -23,6 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps: 
       - uses: anchore/scan-action@v2
+        id: scan 
         with: 
           image: $IMAGE_NAME
 
