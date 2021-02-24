@@ -62,7 +62,9 @@ jobs:
       id: scan
       with:
         image: "$IMAGE_ID:$VERSION"
-        acs-report-enable: true
+        fail-build: true
+    - name: grype scan JSON results
+      run: for j in `ls ./anchore-reports/*.json`; do echo "---- ${j} ----"; cat ${j}; echo; done   
   
   deploy:
     name: 'Deploy to k8s cluster'
