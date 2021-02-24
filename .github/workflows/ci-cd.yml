@@ -25,7 +25,7 @@ jobs:
     - uses: anchore/scan-action@v2
       id: scan
       with:
-        image: "new-app"
+        image: "localbuild/new-app"
         acs-report-enable: true
 
   # Push image to GitHub Packages.
