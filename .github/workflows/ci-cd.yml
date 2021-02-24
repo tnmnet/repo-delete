@@ -61,7 +61,7 @@ jobs:
     - uses: anchore/scan-action@v2
       id: scan
       with:
-        image: $IMAGE_ID:$VERSION
+        image: "$IMAGE_ID:$VERSION"
         acs-report-enable: true
   
   deploy:
