@@ -1,5 +1,5 @@
 FROM node:lts-alpine
 WORKDIR /usr/src/app
 COPY . .
-EXPOSE 5000
+EXPOSE 8088
 CMD [ "npm", "start" ]
