@@ -9,6 +9,7 @@ env:
  
 jobs:
   test:
+    name: 'Run tests before pushing to GitHub registry'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -24,6 +25,7 @@ jobs:
   
   # Push image to GitHub Packages.
   push:
+    name: 'Push to GitHub container registry'
     # Ensure test job passes before pushing image.
     needs: test
     runs-on: ubuntu-latest
@@ -61,6 +63,7 @@ jobs:
           docker push $IMAGE_ID:$VERSION
           
   deploy:
+    name: 'Deploy to k8s cluster'
     needs: push
     runs-on: ubuntu-latest
     steps:
