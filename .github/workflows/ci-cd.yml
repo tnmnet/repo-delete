@@ -22,10 +22,9 @@ jobs:
     name: 'Scan image'
     runs-on: ubuntu-latest
     steps: 
-      - uses: sysdiglabs/scan-action@v3
-        id: scan 
-        with: 
-          image-tag: $IMAGE_NAME
+      - uses: azure/container-scan@v0
+        with:
+          image-name: $IMAGE_NAME
 
   # Push image to GitHub Packages.
   push:
