@@ -58,13 +58,15 @@ jobs:
     name: 'Scan image'
     runs-on: ubuntu-latest
     steps: 
-    - uses: anchore/scan-action@v2
-      id: scan
-      with:
-        image: "$IMAGE_ID:$VERSION"
-        fail-build: true
-    - name: grype scan JSON results
-      run: for j in `ls ./anchore-reports/*.json`; do echo "---- ${j} ----"; cat ${j}; echo; done   
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: $IMAGE_ID:$VERSION
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'   
   
   deploy:
     name: 'Deploy to k8s cluster'
