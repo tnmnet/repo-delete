@@ -58,6 +58,8 @@ jobs:
     needs: push
     name: 'Scan image'
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
   
   deploy:
     name: 'Deploy to k8s cluster'
