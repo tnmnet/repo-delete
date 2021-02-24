@@ -8,21 +8,25 @@ env:
   IMAGE_NAME: new-app
  
 jobs:
-  test:
-    name: 'Run tests'
+  build:
+    name: 'Build image'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
 
-      - name: Run tests
-        run: |
-          if [ -f docker-compose.test.yml ]; then
-            docker-compose --file docker-compose.test.yml build
-            docker-compose --file docker-compose.test.yml run sut
-          else
-            docker build . --file Dockerfile
-          fi
-  
+      - name: Build image
+        run: docker build . --file Dockerfile --tag $IMAGE_NAME
+
+  test:
+    needs: build
+    name: 'Scan image'
+    runs-on: ubuntu-latest
+    steps: 
+      - uses: anchore/scan-sction@v2
+        with: 
+          image: $IMAGE_NAME
+          fail-build: true
+
   # Push image to GitHub Packages.
   push:
     name: 'Push to registry'
@@ -33,9 +37,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-
-      - name: Build image
-        run: docker build . --file Dockerfile --tag $IMAGE_NAME
 
       - name: Log into registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login docker.pkg.github.com -u ${{ github.actor }} --password-stdin
